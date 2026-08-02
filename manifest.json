@@ -1,0 +1,31 @@
+{
+  "name": "AI Trener",
+  "short_name": "AI Trener",
+  "description": "Sun'iy intellekt yordamida mashqlarni va kaloriyani kuzatuvchi shaxsiy trener",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B1613",
+  "theme_color": "#0B1613",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
