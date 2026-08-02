@@ -1,0 +1,2730 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Trener — Boshlang'ich versiya</title>
+<script>
+  // Sahifa chizilishidan oldin saqlangan mavzuni (kun/tun) qo'llash — miltillashning oldini olish uchun
+  (function(){
+    try{
+      if(localStorage.getItem('aitrener_theme') === 'light'){
+        document.documentElement.classList.add('theme-light');
+      }
+    }catch(e){}
+  })();
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #0B1613;
+    --bg-soft: #10201C;
+    --card: #142822;
+    --line: #234036;
+    --lime: #7ED957;
+    --amber: #FF9B4D;
+    --text: #EAF3EE;
+    --muted: #8FAA9F;
+  }
+  html.theme-light{
+    --bg: #F5F8F6;
+    --bg-soft: #FFFFFF;
+    --card: #FFFFFF;
+    --line: #E3EDE7;
+    --lime: #2F9E44;
+    --amber: #E8862E;
+    --text: #12201A;
+    --muted: #74857D;
+  }
+  html.theme-light .card{ box-shadow:0 2px 14px rgba(20,40,30,0.05); }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    transition: background .25s, color .25s;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:28px 20px 60px;}
+
+  .eyebrow{
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color: var(--lime); font-weight:600; margin-bottom:6px;
+  }
+  h1{
+    font-family:'Archivo Black', sans-serif;
+    font-size:30px; line-height:1.05; margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--muted); font-size:14px; margin:0 0 28px; line-height:1.5;}
+
+  .card{
+    background: var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:22px;
+    margin-bottom:16px;
+  }
+  .field{margin-bottom:16px;}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; letter-spacing:.03em;}
+  input[type=number]{
+    width:100%; background:var(--bg-soft); border:1px solid var(--line);
+    color:var(--text); font-family:inherit; font-size:16px; padding:12px 14px;
+    border-radius:10px; outline:none;
+  }
+  input[type=number]:focus{border-color:var(--lime);}
+
+  /* ---- Kaloriya sahifasi: skanerlash rejimlari ---- */
+  .scan-mode-tabs{display:flex; gap:8px; margin-bottom:16px;}
+  .scan-mode-tab{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:var(--card); border:1px solid var(--line); color:var(--muted);
+    padding:12px 6px; border-radius:14px; font-size:11px; font-weight:600; cursor:pointer;
+    font-family:inherit;
+  }
+  .scan-mode-tab span{font-size:11px;}
+  .scan-mode-tab.active{border-color:var(--lime); color:var(--lime); background:rgba(126,217,87,0.08);}
+
+  .scan-stage{
+    position:relative; border-radius:16px; overflow:hidden; margin-bottom:14px;
+    background:var(--bg-soft); border:1px dashed var(--line);
+    min-height:190px; display:flex; align-items:center; justify-content:center;
+  }
+  .scan-stage img{width:100%; display:block; border-radius:16px;}
+  .scan-stage-empty{text-align:center; padding:26px 20px;}
+  .scan-stage-icon{font-size:32px; margin-bottom:8px;}
+  .scan-stage-title{font-weight:700; font-size:14.5px; margin-bottom:4px;}
+  .scan-stage-sub{color:var(--muted); font-size:12px; line-height:1.5;}
+  .scan-sweep{
+    position:absolute; left:0; right:0; height:3px; background:var(--lime);
+    box-shadow:0 0 12px 2px var(--lime); top:0;
+    animation:scanSweep 1.4s ease-in-out infinite;
+  }
+  @keyframes scanSweep{
+    0%{top:6%;} 50%{top:92%;} 100%{top:6%;}
+  }
+
+  .food-candidates{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .food-candidates:empty{margin-top:0;}
+  .candidate-chip{
+    background:var(--bg-soft); border:1px solid var(--line); color:var(--text);
+    padding:9px 13px; border-radius:20px; font-size:12.5px; cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+  }
+  .candidate-chip .conf{color:var(--muted); font-size:11px;}
+  .candidate-chip.selected{border-color:var(--lime); color:var(--lime); background:rgba(126,217,87,0.1);}
+  .candidate-chip.conf-high .conf{color:#7ed957;}
+  .candidate-chip.conf-mid .conf{color:#f2c94c;}
+  .candidate-chip.conf-low .conf{color:#eb5757;}
+  .mismatch-link{text-align:center; color:var(--muted); font-size:12.5px; margin-top:14px; cursor:pointer; text-decoration:underline; text-underline-offset:3px;}
+  .low-confidence-warning{
+    background:rgba(235,87,87,0.1); border:1px solid rgba(235,87,87,0.35); color:#eb9797;
+    font-size:12px; padding:10px 12px; border-radius:10px; margin-top:12px; line-height:1.5;
+  }
+
+  .result-head{display:flex; align-items:center; gap:12px; margin-bottom:16px;}
+  .result-icon{font-size:26px; background:var(--bg-soft); width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .result-name{font-weight:700; font-size:16px;}
+  .result-conf{color:var(--muted); font-size:12px; margin-top:2px;}
+
+  .portion-stepper{display:flex; align-items:center; gap:12px;}
+  .portion-stepper button{
+    width:38px; height:38px; border-radius:10px; border:1px solid var(--line);
+    background:var(--bg-soft); color:var(--lime); font-size:18px; cursor:pointer;
+  }
+  #portion-value{font-weight:700; font-size:16px; min-width:24px; text-align:center;}
+  .portion-unit{color:var(--muted); font-size:12.5px;}
+
+  .goal-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .goal-btn{
+    background:var(--bg-soft); border:1px solid var(--line); color:var(--text);
+    padding:14px 10px; border-radius:12px; font-family:inherit; font-size:13.5px;
+    cursor:pointer; text-align:center; line-height:1.3; font-weight:500;
+  }
+  .goal-btn.active{ border-color:var(--lime); background:rgba(198,255,77,0.08); color:var(--lime); }
+
+  button.primary{
+    width:100%; background:var(--lime); color:#0B1613; border:none;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+    padding:15px; border-radius:12px; cursor:pointer; margin-top:6px;
+  }
+  button.primary:disabled{opacity:.4; cursor:not-allowed;}
+  button.ghost{
+    width:100%; background:transparent; color:var(--muted); border:1px solid var(--line);
+    font-family:inherit; font-size:13.5px; padding:12px; border-radius:12px; cursor:pointer; margin-top:8px;
+  }
+
+  .hidden{display:none !important;}
+
+  /* Plan list */
+  .day-tabs{display:flex; gap:8px; overflow-x:auto; margin-bottom:14px; padding-bottom:4px;}
+  .day-tab{
+    flex:0 0 auto; padding:8px 14px; border-radius:20px; font-size:12.5px;
+    background:var(--bg-soft); border:1px solid var(--line); color:var(--muted); cursor:pointer; white-space:nowrap;
+  }
+  .day-tab.active{background:var(--lime); color:#0B1613; border-color:var(--lime); font-weight:600;}
+
+  .ex-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 4px; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .ex-row:last-child{border-bottom:none;}
+  .ex-name{font-size:15px; font-weight:600;}
+  .ex-meta{font-size:12.5px; color:var(--muted); margin-top:2px;}
+  .ex-arrow{color:var(--lime); font-size:18px;}
+
+  /* Exercise detail */
+  .stage{
+    background: linear-gradient(180deg, #2C2F34 0%, #14161A 100%);
+    border:1px solid var(--line); border-radius:16px;
+    height:280px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; overflow:hidden;
+    position:relative; touch-action:none;
+  }
+  #figure3d{width:100%; height:100%; cursor:grab;}
+  #figure3d:active{cursor:grabbing;}
+  .stage-hint{
+    text-align:center; font-size:12px; color:var(--muted); margin-bottom:16px;
+  }
+
+  .instructions{font-size:14px; line-height:1.6; color:var(--text); margin-bottom:18px;}
+  .instructions b{color:var(--lime);}
+
+  /* Camera / rep counting */
+  .cam-wrap{position:relative; border-radius:16px; overflow:hidden; background:#000; margin-bottom:14px;}
+  video{width:100%; display:block; transform:scaleX(-1);}
+  #skeleton{position:absolute; top:0; left:0; width:100%; height:100%; transform:scaleX(-1);}
+  .overlay-count{
+    position:absolute; top:14px; left:14px; background:rgba(11,22,19,0.75);
+    border:1px solid var(--lime); border-radius:12px; padding:8px 16px;
+  }
+  .overlay-count .num{font-family:'Archivo Black'; font-size:30px; color:var(--lime); line-height:1;}
+  .overlay-count .lbl{font-size:10px; color:var(--muted); letter-spacing:.08em;}
+  .overlay-msg{
+    position:absolute; bottom:14px; left:14px; right:14px;
+    background:rgba(11,22,19,0.85); border:1px solid var(--line); border-radius:12px;
+    padding:10px 14px; font-size:13px; text-align:center; transition:.2s;
+  }
+  .overlay-msg.good{border-color:var(--lime); color:var(--lime);}
+  .overlay-msg.warn{border-color:var(--amber); color:var(--amber);}
+
+  .note{
+    font-size:12px; color:var(--muted); background:var(--bg-soft); border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px; line-height:1.5; margin-top:10px;
+  }
+
+  .top-nav{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
+  .back{
+    background:var(--bg-soft); border:1px solid var(--line); color:var(--muted);
+    width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:16px;
+  }
+
+  input[type=text], input[type=tel], input[type=email]{
+    width:100%; background:var(--bg-soft); border:1px solid var(--line);
+    color:var(--text); font-family:inherit; font-size:16px; padding:12px 14px;
+    border-radius:10px; outline:none;
+  }
+  input[type=text]:focus, input[type=tel]:focus, input[type=email]:focus{border-color:var(--lime);}
+  input.invalid{border-color:#FF6B6B;}
+  .error-msg{font-size:12px; color:#FF6B6B; margin-top:6px; min-height:0; display:none;}
+  .error-msg.show{display:block;}
+
+  .contact-toggle{display:flex; gap:8px; margin-bottom:14px;}
+  .contact-tab{
+    flex:1; text-align:center; padding:10px; border-radius:10px; font-size:13px; font-weight:600;
+    background:var(--bg-soft); border:1px solid var(--line); color:var(--muted); cursor:pointer;
+  }
+  .contact-tab.active{background:var(--lime); color:#0B1613; border-color:var(--lime);}
+
+  .fat-result{
+    text-align:center; padding:6px 4px 10px;
+  }
+  .fat-num{
+    font-family:'Archivo Black', sans-serif; font-size:52px; color:var(--lime); line-height:1; margin-bottom:6px;
+  }
+  .fat-line{font-size:15px; line-height:1.5; margin-bottom:4px;}
+  .fat-level{
+    display:inline-block; margin-top:8px; padding:6px 14px; border-radius:20px;
+    background:rgba(255,155,77,0.12); border:1px solid var(--amber); color:var(--amber);
+    font-size:12.5px; font-weight:600;
+  }
+
+  /* ---- App shell: bottom nav ---- */
+  body.nav-mode .wrap{padding-bottom:150px;}
+  #bottom-nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:40;
+    display:flex; background:var(--card); border-top:1px solid var(--line);
+    max-width:520px; margin:0 auto; padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  #bottom-nav .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:6px 4px; cursor:pointer; color:var(--muted); border-radius:12px;
+  }
+  #bottom-nav .nav-btn .nav-icon{font-size:20px; line-height:1;}
+  #bottom-nav .nav-btn .nav-label{font-size:10.5px; font-weight:600;}
+  #bottom-nav .nav-btn.active{color:var(--lime);}
+
+  body.mp-only-mode .wrap{padding-bottom:90px;}
+  #mini-player{
+    position:fixed; left:0; right:0; bottom:64px; z-index:39;
+    max-width:520px; margin:0 auto;
+    background:var(--bg-soft); border-top:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 16px; gap:10px;
+  }
+  #mini-player.no-nav{bottom:0;}
+  #mini-player-title{font-size:12.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;}
+  .mini-player-controls{display:flex; gap:14px; align-items:center;}
+  .mini-player-controls button{
+    background:none; border:none; color:var(--lime); font-size:17px; cursor:pointer; padding:0;
+  }
+
+  .home-link-card{
+    display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+  }
+  .home-link-card .hl-left{display:flex; align-items:center; gap:12px;}
+  .home-link-card .hl-icon{font-size:22px;}
+  .home-link-card .hl-text{font-weight:600; font-size:15px;}
+  .home-link-card .hl-arrow{color:var(--lime); font-size:18px;}
+
+  .stat-label{font-size:12px; color:var(--muted); margin-bottom:4px;}
+  .stat-num{font-family:'Archivo Black', sans-serif; font-size:30px; color:var(--lime);}
+
+  .profile-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .profile-row:last-child{border-bottom:none;}
+  .profile-row span{color:var(--muted);}
+  .profile-row b{color:var(--text); font-weight:600;}
+
+  input[type=file]{
+    width:100%; background:var(--bg-soft); border:1px dashed var(--line);
+    color:var(--muted); font-family:inherit; font-size:13px; padding:14px;
+    border-radius:10px; cursor:pointer;
+  }
+
+  .hidden-input{display:none !important;}
+  .music-empty-icon{font-size:36px; text-align:center; margin-bottom:10px;}
+  .music-empty-title{font-weight:700; font-size:15px; text-align:center; margin-bottom:6px;}
+  .music-empty-sub{color:var(--muted); font-size:13px; text-align:center; line-height:1.55; margin-bottom:18px;}
+  .music-toolbar{display:flex; align-items:center; gap:8px; margin-bottom:14px;}
+  .music-toolbar input[type=text]{
+    flex:1; background:var(--bg-soft); border:1px solid var(--line); color:var(--text);
+    font-family:inherit; font-size:13.5px; padding:11px 14px; border-radius:10px; outline:none;
+  }
+  .icon-btn{
+    background:var(--bg-soft); border:1px solid var(--line); color:var(--lime);
+    width:40px; height:40px; border-radius:10px; font-size:18px; cursor:pointer; flex:0 0 auto;
+  }
+  .music-meta-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px; color:var(--muted);}
+  #music-shuffle-all{color:var(--lime); font-weight:600; cursor:pointer;}
+  #music-playlist{max-height:54vh; overflow-y:auto;}
+  .music-no-results{text-align:center; color:var(--muted); font-size:13px; padding:22px 0;}
+
+  .track-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:11px 4px; border-bottom:1px solid var(--line); cursor:pointer; gap:10px;
+  }
+  .track-row:last-child{border-bottom:none;}
+  .track-row.playing .track-name{color:var(--lime);}
+  .track-idx{width:20px; flex:0 0 auto; font-size:11.5px; color:var(--muted);}
+  .track-art{
+    width:36px; height:36px; border-radius:8px; flex:0 0 auto;
+    background:var(--bg-soft); display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
+  .track-row.playing .track-art{background:rgba(126,217,87,0.15); color:var(--lime);}
+  .track-info{flex:1; overflow:hidden;}
+  .track-name{font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;}
+  .track-duration{font-size:11.5px; color:var(--muted); flex:0 0 auto;}
+  .track-play-ico{font-size:14px; flex:0 0 auto;}
+
+  .placement-tip{
+    background:rgba(198,255,77,0.06); border:1px solid rgba(198,255,77,0.3);
+    border-radius:14px; padding:14px 16px; margin:14px 0;
+  }
+  .placement-tip-head{font-weight:700; font-size:13.5px; color:var(--lime); margin-bottom:6px;}
+  .placement-tip-body{font-size:12.5px; color:var(--text); line-height:1.55;}
+
+  .placement-diagram{
+    background:#0c130c; border:1px solid var(--line); border-radius:12px;
+    margin:6px 0 12px; padding:10px; display:flex; justify-content:center;
+  }
+  .placement-diagram svg{width:100%; max-width:260px; height:auto; display:block;}
+  .pd-beam{animation:pdBeamPulse 1.8s ease-in-out infinite;}
+  .pd-phone{animation:pdPhoneFloat 1.8s ease-in-out infinite;}
+  .pd-dot{animation:pdDotBlink 1.8s ease-in-out infinite;}
+  @keyframes pdBeamPulse{
+    0%,100%{opacity:.18;} 50%{opacity:.42;}
+  }
+  @keyframes pdPhoneFloat{
+    0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}
+  }
+  @keyframes pdDotBlink{
+    0%,100%{opacity:.4;} 50%{opacity:1;}
+  }
+
+  /* ---- Bosh sahifa: yangi dizayn ---- */
+  .home-top{margin-bottom:18px;}
+  .home-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(126,217,87,0.12); color:var(--lime);
+    font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    padding:7px 14px; border-radius:20px; margin-bottom:14px;
+  }
+  .home-hello-row{display:flex; justify-content:space-between; align-items:flex-start; gap:14px;}
+  .home-hello{font-size:25px; margin:0 0 8px;}
+  .home-hello .accent{color:var(--lime);}
+  .home-sub{color:var(--muted); font-size:13.5px; line-height:1.5; max-width:230px; margin:0;}
+
+  .ring-wrap{position:relative; width:100px; height:100px; flex:0 0 auto;}
+  .ring-svg{width:100%; height:100%; transform:rotate(-90deg);}
+  .ring-bg{fill:none; stroke:var(--line); stroke-width:9;}
+  .ring-fg{fill:none; stroke:var(--lime); stroke-width:9; stroke-linecap:round; transition:stroke-dashoffset .4s;}
+  .ring-label{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  .ring-pct{font-family:'Archivo Black',sans-serif; font-size:18px;}
+  .ring-caption{font-size:8.5px; color:var(--muted); line-height:1.3; margin-top:2px;}
+
+  .card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+  .card-head-left{display:flex; align-items:center; gap:10px;}
+  .ico-badge{
+    width:34px; height:34px; border-radius:10px; background:rgba(126,217,87,0.12);
+    display:flex; align-items:center; justify-content:center; font-size:16px; flex:0 0 auto;
+  }
+  .card-head-title{font-weight:700; font-size:15px;}
+  .card-head-link{color:var(--lime); font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;}
+
+  .week-strip{display:flex; justify-content:space-between; gap:2px; margin-bottom:14px;}
+  .week-cell{flex:1; text-align:center; padding:8px 2px; border-radius:12px; cursor:pointer;}
+  .week-cell.selected{background:var(--bg-soft);}
+  .week-day-lbl{font-size:10px; color:var(--muted); margin-bottom:6px;}
+  .week-day-num{
+    font-size:13.5px; font-weight:600; margin:0 auto 6px; width:24px; height:24px; line-height:24px;
+    border-radius:50%; border:1.5px solid transparent;
+  }
+  .week-cell.is-today .week-day-num{border-color:var(--lime); color:var(--lime);}
+  .week-cell.selected .week-day-num{color:var(--lime);}
+  .week-dots{display:flex; justify-content:center; gap:2px;}
+  .wdot{width:5px; height:5px; border-radius:50%; background:var(--line);}
+  .wdot.dot-done, .wdot.dot-today{background:var(--lime);}
+  .wdot.dot-future{background:var(--lime); opacity:.35;}
+  .wdot.dot-rest{background:var(--line);}
+
+  .today-row{display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid var(--line); gap:12px;}
+  .today-row-left{display:flex; align-items:center; gap:12px; min-width:0;}
+  .ico-circle{
+    width:38px; height:38px; border-radius:50%; background:var(--bg-soft); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:16px; flex:0 0 auto;
+  }
+  .today-label{font-size:11px; color:var(--muted); margin-bottom:2px;}
+  .today-value{font-size:13.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .start-btn{
+    background:var(--lime); color:#0B1613; border:none; font-family:inherit; font-weight:700; font-size:12.5px;
+    padding:11px 15px; border-radius:12px; cursor:pointer; white-space:nowrap; flex:0 0 auto;
+  }
+
+  .kcal-row{display:flex; justify-content:space-between; align-items:center; gap:14px;}
+  .kcal-left{display:flex; align-items:center; gap:12px;}
+  .fire-badge{background:rgba(255,155,77,0.14);}
+  .goal-line{font-size:11.5px; color:var(--muted); margin-top:4px;}
+  .mini-bars{display:flex; align-items:flex-end; gap:4px; height:52px; flex:0 0 auto;}
+  .mbar{width:6px; min-height:6px; border-radius:4px; background:rgba(126,217,87,0.3);}
+  .mbar.mbar-today{background:var(--lime);}
+
+  .banner-card{display:flex; justify-content:space-between; align-items:flex-end; overflow:hidden; position:relative;}
+  .banner-left{display:flex; gap:12px;}
+  .ico-circle.trophy{font-size:17px;}
+  .banner-title{font-weight:700; font-size:14.5px; line-height:1.3; margin-bottom:4px;}
+  .banner-sub{font-size:12px; color:var(--muted);}
+  .mountain-svg{width:120px; height:82px; flex:0 0 auto;}
+
+  /* Kun/Tun rejim tugmasi (Profil) */
+  .theme-toggle{display:flex; gap:8px; margin-top:10px;}
+  .theme-opt{
+    flex:1; text-align:center; padding:12px; border-radius:12px; background:var(--bg-soft);
+    border:1px solid var(--line); color:var(--muted); font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .theme-opt.active{background:var(--lime); color:#0B1613; border-color:var(--lime);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- SCREEN 0A: ISM / FAMILIYA -->
+  <div id="screen-name">
+    <div class="eyebrow">AI Trener · Demo</div>
+    <h1>Keling, tanishamiz</h1>
+    <p class="sub">Avval ismingiz va familiyangizni kiriting.</p>
+
+    <div class="card">
+      <div class="field">
+        <label>Ismingiz</label>
+        <input type="text" id="first-name" placeholder="masalan, Sardor" autocomplete="given-name">
+        <div class="error-msg" id="err-first-name">Ismingizni kiriting</div>
+      </div>
+      <div class="field">
+        <label>Familiyangiz</label>
+        <input type="text" id="last-name" placeholder="masalan, Aliyev" autocomplete="family-name">
+        <div class="error-msg" id="err-last-name">Familiyangizni kiriting</div>
+      </div>
+      <button class="primary" id="btn-name-continue" disabled>Davom etish</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 0B: TELEFON / EMAIL -->
+  <div id="screen-contact" class="hidden">
+    <div class="top-nav">
+      <div class="back" id="btn-back-contact">←</div>
+    </div>
+    <div class="eyebrow">AI Trener · Demo</div>
+    <h1>Aloqa ma'lumoti</h1>
+    <p class="sub">Bu ilovaga qaytib kirganingizda ma'lumotlaringiz saqlanib qoladi va hammasini qaytadan kiritishingiz shart bo'lmaydi.</p>
+
+    <div class="card">
+      <div class="contact-toggle">
+        <div class="contact-tab active" id="tab-phone" data-mode="phone">Telefon raqam</div>
+        <div class="contact-tab" id="tab-email" data-mode="email">Email</div>
+      </div>
+      <div class="field">
+        <label id="contact-label">Telefon raqamingiz</label>
+        <input type="tel" id="contact-value" placeholder="masalan, +998 90 123 45 67">
+        <div class="error-msg" id="err-contact">To'g'ri qiymat kiriting</div>
+      </div>
+      <button class="primary" id="btn-contact-continue" disabled>Davom etish</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 1: PROFILE -->
+  <div id="screen-profile" class="hidden">
+    <div class="top-nav">
+      <div class="back" id="btn-back-profile">←</div>
+    </div>
+    <div class="eyebrow">AI Trener · Demo</div>
+    <h1>Tanangiz haqida</h1>
+    <p class="sub">Ma'lumotlaringiz asosida shaxsiy mashq rejangizni tuzamiz.</p>
+
+    <div class="card">
+      <div class="field">
+        <label>Yoshingiz</label>
+        <input type="number" id="age" placeholder="masalan, 24" min="10" max="100">
+        <div class="error-msg" id="err-age">Yosh 10 dan 100 gacha bo'lishi kerak</div>
+      </div>
+      <div class="field">
+        <label>Bo'yingiz (sm)</label>
+        <input type="number" id="height" placeholder="masalan, 175" min="100" max="250">
+        <div class="error-msg" id="err-height">Bo'y 100 dan 250 sm gacha bo'lishi kerak</div>
+      </div>
+      <div class="field">
+        <label>Vazningiz (kg)</label>
+        <input type="number" id="weight" placeholder="masalan, 70" min="20" max="300">
+        <div class="error-msg" id="err-weight">Vazn 20 dan 300 kg gacha bo'lishi kerak</div>
+      </div>
+      <button class="primary" id="btn-generate" disabled>Davom etish</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 1B: TANA YOG' FOIZI + MAQSAD -->
+  <div id="screen-bodyfat" class="hidden">
+    <div class="top-nav">
+      <div class="back" id="btn-back-bodyfat">←</div>
+    </div>
+    <div class="eyebrow">Natija</div>
+    <h1>Tahlil tayyor</h1>
+
+    <div class="card">
+      <div class="fat-result">
+        <div class="fat-num" id="fat-num">0%</div>
+        <div class="fat-line" id="fat-line">Sizning tanangizdagi yog' foizi.</div>
+        <div class="fat-level" id="fat-level">Daraja</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field" style="margin-bottom:10px;">
+        <label>Ilovadan foydalanish maqsadingiz</label>
+        <div class="goal-grid">
+          <div class="goal-btn" data-goal="cut">Vazn tashlash</div>
+          <div class="goal-btn" data-goal="bulk">Mushak massasini oshirish</div>
+          <div class="goal-btn" data-goal="health">Sog'liqni mustahkamlash</div>
+          <div class="goal-btn" data-goal="shape">Qomatni shakllantirish</div>
+        </div>
+      </div>
+      <button class="primary" id="btn-goal-continue" disabled>Davom etish</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: PLAN -->
+  <div id="screen-plan" class="hidden">
+    <div class="top-nav">
+      <div class="back" id="btn-back-home-from-plan">←</div>
+      <div class="eyebrow" style="margin:0;">Sizning haftalik dasturingiz</div>
+    </div>
+    <h1 id="plan-title">Reja tayyor</h1>
+    <p class="sub" id="plan-sub"></p>
+
+    <div class="day-tabs" id="day-tabs"></div>
+
+    <div class="card" id="exercise-list"></div>
+
+    <button class="ghost" id="btn-restart">Ma'lumotlarni qayta kiritish</button>
+  </div>
+
+  <!-- PAGE: HOME -->
+  <div id="page-home" class="hidden">
+    <div class="home-top">
+      <div class="home-badge">🔥 Bugun sening kuning!</div>
+      <div class="home-hello-row">
+        <div>
+          <h1 class="home-hello">Salom, <span id="home-username" class="accent">Foydalanuvchi</span>! 👋</h1>
+          <p class="home-sub">O'zing uchun eng yaxshi versiyang sari harakatni davom ettir!</p>
+        </div>
+        <div class="ring-wrap">
+          <svg viewBox="0 0 120 120" class="ring-svg">
+            <circle cx="60" cy="60" r="52" class="ring-bg"/>
+            <circle cx="60" cy="60" r="52" class="ring-fg" id="home-ring-fg"/>
+          </svg>
+          <div class="ring-label">
+            <div class="ring-pct" id="home-ring-pct">0%</div>
+            <div class="ring-caption">Maqsadinga<br>yaqin!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-left">
+          <div class="ico-badge">📅</div>
+          <div class="card-head-title">Haftalik reja</div>
+        </div>
+        <div class="card-head-link" id="btn-open-plan">To'liq reja <span>→</span></div>
+      </div>
+      <div class="week-strip" id="week-strip"></div>
+      <div class="today-row">
+        <div class="today-row-left">
+          <div class="ico-circle">🏋️</div>
+          <div>
+            <div class="today-label">Bugungi mashg'ulot</div>
+            <div class="today-value" id="home-today-workout">—</div>
+          </div>
+        </div>
+        <button class="start-btn" id="btn-home-start">Boshlash →</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="kcal-row">
+        <div class="kcal-left">
+          <div class="ico-badge fire-badge">🔥</div>
+          <div>
+            <div class="stat-label">Bugungi sarflangan</div>
+            <div class="stat-num" id="home-burned-kcal">0 kkal</div>
+            <div class="goal-line">🎯 Maqsad: <span id="home-goal-kcal">650</span> kkal</div>
+          </div>
+        </div>
+        <div class="mini-bars" id="home-bars"></div>
+      </div>
+    </div>
+
+    <div class="card banner-card">
+      <div class="banner-left">
+        <div class="ico-circle trophy">🏆</div>
+        <div>
+          <div class="banner-title">Har kuni bir qadam<br>maqsading sari!</div>
+          <div class="banner-sub">Disiplin – muvaffaqiyat kaliti.</div>
+        </div>
+      </div>
+      <svg class="mountain-svg" viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="0,100 45,32 78,62 98,22 160,100" style="fill:var(--line);opacity:.7"/>
+        <polygon points="30,100 72,42 100,72 132,28 160,100" style="fill:var(--lime);opacity:.22"/>
+        <line x1="100" y1="72" x2="100" y2="22" style="stroke:var(--lime);stroke-width:2"/>
+        <path d="M100,22 L100,34 L117,27 Z" style="fill:var(--lime)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- PAGE: ACCOUNT / PROFILE -->
+  <div id="page-account" class="hidden">
+    <div class="eyebrow">Profil</div>
+    <h1>Sizning ma'lumotlaringiz</h1>
+
+    <div class="card">
+      <div class="stat-label">Ilova rangi</div>
+      <div class="theme-toggle">
+        <div class="theme-opt" id="theme-day" data-theme="light">☀️ Kun</div>
+        <div class="theme-opt" id="theme-night" data-theme="dark">🌙 Tun</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="profile-row"><span>Ism Familiya</span><b id="acc-fullname">-</b></div>
+      <div class="profile-row"><span>Aloqa</span><b id="acc-contact">-</b></div>
+      <div class="profile-row"><span>Yosh</span><b id="acc-age">-</b></div>
+      <div class="profile-row"><span>Bo'y</span><b id="acc-height">-</b></div>
+      <div class="profile-row"><span>Vazn</span><b id="acc-weight">-</b></div>
+      <div class="profile-row"><span>Tana yog' foizi</span><b id="acc-bodyfat">-</b></div>
+      <div class="profile-row"><span>Maqsad</span><b id="acc-goal">-</b></div>
+    </div>
+    <button class="ghost" id="btn-restart-account">Ma'lumotlarni qayta kiritish</button>
+  </div>
+
+  <!-- PAGE: FOOD PHOTO -> KCAL -->
+  <div id="page-food" class="hidden">
+    <div class="eyebrow">AI kaloriya hisoblagich</div>
+    <h1>Ovqatingizni aniqlang</h1>
+    <p class="sub">Kamera bilan suratga oling, galereyadan rasm tanlang yoki taom nomini yozing — AI kaloriyasini hisoblab beradi.</p>
+
+    <div class="scan-mode-tabs">
+      <button class="scan-mode-tab active" data-mode="camera" id="mode-tab-camera">📷<span>Kamera</span></button>
+      <button class="scan-mode-tab" data-mode="upload" id="mode-tab-upload">🖼<span>Rasm</span></button>
+      <button class="scan-mode-tab" data-mode="text" id="mode-tab-text">✍️<span>Yozish</span></button>
+    </div>
+
+    <input type="file" accept="image/*" capture="environment" id="food-camera-input" class="hidden-input">
+    <input type="file" accept="image/*" id="food-upload-input" class="hidden-input">
+
+    <!-- CAMERA / UPLOAD MODE -->
+    <div class="card scan-panel" id="scan-panel-image">
+      <div class="scan-stage" id="scan-stage">
+        <img id="food-preview" class="hidden">
+        <div class="scan-stage-empty" id="scan-stage-empty">
+          <div class="scan-stage-icon" id="scan-stage-icon">📷</div>
+          <div class="scan-stage-title" id="scan-stage-title">Ovqatni suratga oling</div>
+          <div class="scan-stage-sub" id="scan-stage-sub">Aniqroq natija uchun taomni yuqoridan, yorug' joyda suratga oling</div>
+        </div>
+        <div class="scan-sweep hidden" id="scan-sweep"></div>
+      </div>
+      <button class="primary" id="btn-open-camera">📷 Kamerani ochish</button>
+      <button class="ghost" id="btn-open-upload">🖼 Galereyadan tanlash</button>
+      <div class="note" id="food-status">Hali rasm tanlanmagan.</div>
+
+      <div id="food-candidates" class="food-candidates hidden"></div>
+      <div class="mismatch-link hidden" id="btn-mismatch-to-text">❌ Ro'yxatda yo'qmi? Nomini yozib qidiring →</div>
+    </div>
+
+    <!-- MANUAL TEXT MODE -->
+    <div class="card scan-panel hidden" id="scan-panel-text">
+      <div class="field">
+        <label>Taom nomi</label>
+        <input type="text" id="food-text-input" placeholder="Masalan: osh, lag'mon, manti, non...">
+      </div>
+      <div id="food-text-candidates" class="food-candidates"></div>
+      <div class="note" id="food-text-hint">Taom nomini yozing — mos variantlar shu yerda chiqadi.</div>
+    </div>
+
+    <!-- RESULT / CONFIRM -->
+    <div class="card hidden" id="food-result-field">
+      <div class="result-head">
+        <div class="result-icon">🍽️</div>
+        <div>
+          <div class="result-name" id="food-detected-name">-</div>
+          <div class="result-conf" id="food-detected-conf"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Miqdor</label>
+        <div class="portion-stepper">
+          <button type="button" id="portion-minus">−</button>
+          <div id="portion-value">1</div>
+          <div id="portion-unit" class="portion-unit">porsiya</div>
+          <button type="button" id="portion-plus">+</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Jami kaloriya (kkal) — kerak bo'lsa qo'lda tahrirlang</label>
+        <input type="number" id="food-kcal-input" min="0" max="5000">
+      </div>
+      <button class="primary" id="btn-add-food-kcal">Bugungi hisobga qo'shish</button>
+    </div>
+
+    <div class="card">
+      <div class="stat-label">Bugun qo'shilgan</div>
+      <div class="stat-num" id="food-consumed-total">0 kkal</div>
+      <div id="food-history-list"></div>
+    </div>
+  </div>
+
+  <!-- PAGE: MUSIC -->
+  <div id="page-music" class="hidden">
+    <div class="eyebrow">Musiqa</div>
+    <h1>Trenirovka uchun musiqa</h1>
+    <p class="sub">Qurilmangizdagi barcha qo'shiqlar — xuddi telefoningizdagi musiqa ilovasidagidek. Mashq paytida ham fon rejimida ijro etiladi.</p>
+
+    <div class="card" id="music-empty-card">
+      <div class="music-empty-icon">🎵</div>
+      <div class="music-empty-title">Hali musiqa yuklanmagan</div>
+      <div class="music-empty-sub">Qurilmangizdagi musiqa papkasini (masalan, "Music" yoki "Download") tanlang — ichidagi barcha qo'shiqlar avtomatik ravishda ro'yxatga tushadi. Brauzer xavfsizligi tufayli bu tanlovni ilovani har ochganingizda bir marta qayta tasdiqlash kerak bo'ladi.</div>
+      <button class="primary" id="btn-load-device-music">📂 Qurilmadagi musiqalarni yuklash</button>
+      <button class="ghost" id="btn-load-music-files">Yoki alohida fayllarni tanlash</button>
+    </div>
+
+    <input type="file" accept="audio/*" webkitdirectory directory multiple id="music-dir-input" class="hidden-input">
+    <input type="file" accept="audio/*" multiple id="music-file-input" class="hidden-input">
+
+    <div class="card hidden" id="music-library-card">
+      <div class="music-toolbar">
+        <input type="text" id="music-search" placeholder="Qo'shiqlarni qidirish...">
+        <button class="icon-btn" id="btn-add-more-music" title="Yana musiqa qo'shish">＋</button>
+      </div>
+      <div class="music-meta-row">
+        <span id="music-count">0 ta qo'shiq</span>
+        <span id="music-shuffle-all">🔀 Barchasini aralashtirib ijro etish</span>
+      </div>
+      <div id="music-playlist"></div>
+      <div id="music-no-results" class="music-no-results hidden">Hech narsa topilmadi</div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: EXERCISE DETAIL + ANIMATION -->
+  <div id="screen-exercise" class="hidden">
+    <div class="top-nav">
+      <div class="back" id="btn-back-plan">←</div>
+      <div class="eyebrow" style="margin:0;">Mashqni o'rganish</div>
+    </div>
+    <h1 id="ex-title">Mashq nomi</h1>
+
+    <div class="stage">
+      <div id="figure3d"></div>
+    </div>
+    <div class="stage-hint">🔄 Barmog'ingiz bilan suring — modelni har tarafdan aylantirib ko'ring</div>
+
+    <div class="instructions" id="ex-instructions"></div>
+
+    <div class="placement-tip">
+      <div class="placement-tip-head">📱 Telefonni qayerga qo'yish kerak</div>
+      <div class="placement-diagram" id="ex-placement-diagram"></div>
+      <div class="placement-tip-body" id="ex-placement-tip"></div>
+    </div>
+
+    <button class="primary" id="btn-start-cam">📷 Kamera bilan boshlash</button>
+    <div class="note">Kamerani yoqqanda AI tanangizning bo'g'imlarini (son, tizza, yelka, tirsak) real vaqtda kuzatib, mashqni to'g'ri bajarayotganingizni tekshiradi.</div>
+  </div>
+
+  <!-- SCREEN 4: CAMERA / REP COUNT -->
+  <div id="screen-camera" class="hidden">
+    <div class="top-nav">
+      <div class="back" id="btn-back-ex">←</div>
+      <div class="eyebrow" style="margin:0;">Mashq bajarilmoqda</div>
+    </div>
+    <h1 id="cam-title">Mashq</h1>
+
+    <div class="cam-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="skeleton"></canvas>
+      <div class="overlay-count">
+        <div class="num" id="rep-count">0</div>
+        <div class="lbl" id="rep-target">/ 10 TA</div>
+      </div>
+      <div class="overlay-msg" id="cam-msg">Kamera yoqilmoqda…</div>
+    </div>
+    <div class="note" id="model-status">AI tana kuzatish modeli yuklanmoqda… (birinchi marta internetdan yuklaydi, 5-10 soniya)</div>
+
+    <button class="primary" id="btn-next-set">Keyingi to'plam</button>
+    <button class="ghost" id="btn-stop-cam">To'xtatish</button>
+  </div>
+
+</div>
+
+<!-- Doimiy mini musiqa pleer (barcha sahifalarda ko'rinadi, agar musiqa yuklangan bo'lsa) -->
+<div id="mini-player" class="hidden">
+  <div id="mini-player-title">—</div>
+  <div class="mini-player-controls">
+    <button id="mp-prev">⏮</button>
+    <button id="mp-playpause">▶️</button>
+    <button id="mp-next">⏭</button>
+  </div>
+</div>
+<audio id="audio-player"></audio>
+
+<!-- Pastki menyu (bottom nav) -->
+<div id="bottom-nav" class="hidden">
+  <div class="nav-btn" data-tab="home" id="nav-home">
+    <div class="nav-icon">🏠</div>
+    <div class="nav-label">Bosh sahifa</div>
+  </div>
+  <div class="nav-btn" data-tab="food" id="nav-food">
+    <div class="nav-icon">🔥</div>
+    <div class="nav-label">Kaloriya</div>
+  </div>
+  <div class="nav-btn" data-tab="music" id="nav-music">
+    <div class="nav-icon">🎵</div>
+    <div class="nav-label">Musiqa</div>
+  </div>
+  <div class="nav-btn" data-tab="account" id="nav-account">
+    <div class="nav-icon">👤</div>
+    <div class="nav-label">Profil</div>
+  </div>
+</div>
+
+<!-- 3D mashq animatsiyasi uchun -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<!-- Rigged FBX modelni yuklash uchun (canIget.fbx + textura) -->
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.6.9/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+
+<!-- Pose detection: real skeleton/joint tracking (loaded from CDN, needs internet on first run) -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.20.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.20.0/dist/tf-converter.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.20.0/dist/tf-backend-webgl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+
+<!-- Ovqat rasmini aniqlash uchun (image classification, kaloriya hisoblagich menyusida) -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+
+<script>
+(function(){
+  // ---------- DATA: exercise library ----------
+  const EXO = {
+    squat: {
+      name: "Squat (o'tirib turish)",
+      instructions: "Oyoqlaringizni yelka kengligida oching. <b>Nafas oling</b>, dumbangizni orqaga tortib pastga eging, tizzalar barmoq uchidan oshib ketmasin. So'ng <b>kuch bilan yuqoriga</b> qayting.",
+      figure: "squat",
+      // joint: qaysi 3 nuqta orasidagi burchak o'lchanadi; direction: 'decreasing' = tik turgan holat katta burchak, egilgan holat kichik burchak
+      rep: {joint:'leg', direction:'decreasing', restAngle:155, workAngle:120, depthAngle:100}
+    },
+    pushup: {
+      name: "Push-up (turnikda tortilish o'rniga)",
+      instructions: "Qo'llaringizni yelkadan biroz kengroq qo'ying. Tanangizni <b>to'g'ri chiziq</b> holida pastga tushiring, ko'krak yerga yaqinlashganda <b>yuqoriga iting</b>.",
+      figure: "pushup",
+      rep: {joint:'arm', direction:'decreasing', restAngle:160, workAngle:110, depthAngle:95}
+    },
+    shoulder: {
+      name: "Yelka uchun dumbbell press",
+      instructions: "Dumbbellarni yelka balandligida ushlab, <b>tirsaklarni bukmasdan</b> yuqoriga iting, so'ng nazorat ostida pastga tushiring.",
+      figure: "shoulder",
+      rep: {joint:'arm', direction:'increasing', restAngle:95, workAngle:150, depthAngle:155}
+    },
+    lunge: {
+      name: "Lunge (qadam tashlab cho'kish)",
+      instructions: "Bir oyog'ingiz bilan oldinga qadam tashlang, orqadagi tizza yerga yaqinlashguncha <b>pastga eging</b>, so'ng boshlang'ich holatga qayting.",
+      figure: "squat",
+      rep: {joint:'leg', direction:'decreasing', restAngle:155, workAngle:125, depthAngle:110}
+    },
+    plank: {
+      name: "Plank (statik ushlab turish)",
+      instructions: "Tirsaklar va oyoq barmoqlari yerga tegib, tanani <b>to'g'ri chiziq</b> holida belgilangan vaqt davomida ushlab turing.",
+      figure: "pushup",
+      rep: null // statik mashq — takror emas, vaqt sanaladi
+    },
+    row: {
+      name: "Dumbbell Row (orqa mashqi)",
+      instructions: "Biroz oldinga egilib, dumbbellni <b>qorin tomonga tortib</b> ko'taring, keyin nazorat bilan pastga tushiring.",
+      figure: "shoulder",
+      rep: {joint:'arm', direction:'decreasing', restAngle:150, workAngle:90, depthAngle:80}
+    }
+  };
+
+  // Har bir mashq uchun telefonni qayerga qo'yish bo'yicha ko'rsatma —
+  // AI qo'shimlar bir-biriga ustma-ust tushib qolmasligi uchun to'g'ri kamera burchagi muhim.
+  const PLACEMENT_TIPS = {
+    squat: "Telefonni <b>tik holda</b>, sizdan <b>1.5–2 metr</b> narida, <b>tos/bel balandligida</b> to'g'ridan-to'g'ri old tomondan qarab qo'ying. Butun tanangiz (bosh-oyoqgacha) ekranda ko'rinishi kerak.",
+    lunge: "Telefonni <b>tik holda</b>, <b>1.5–2 metr</b> narida, <b>tos balandligida</b> to'g'ridan-to'g'ri old tomondan qo'ying. Ikkala oyog'ingiz to'liq ko'rinib turishi kerak.",
+    pushup: "Telefonni <b>yon tomondan</b> (profil holatda), <b>pol balandligida</b>, sizdan <b>1.5 metr</b> narida biror narsaga (qutiga, devorga) suyab qo'ying. Old tomondan qo'ysangiz, qo'l bo'g'inlari bir-biriga ustma-ust tushib, AI adashadi.",
+    plank: "Telefonni <b>yon tomondan</b>, <b>pol balandligida</b>, tanangiz to'liq gorizontal chiziq bo'lib ko'rinadigan qilib qo'ying.",
+    shoulder: "Telefonni <b>biroz yon burchakdan</b> (to'g'ridan-to'g'ri old emas), <b>ko'krak balandligida</b>, <b>2 metr</b> narida qo'ying — shunda qo'l harakati aniq ko'rinadi va tirsak-yelka nuqtalari ustma-ust tushmaydi.",
+    row: "Telefonni <b>yon tomondan</b>, <b>ko'krak balandligida</b>, <b>1.5–2 metr</b> narida qo'ying — egilgan holatingiz va qo'l harakati profil holatda eng aniq ko'rinadi."
+  };
+
+  // ---------- Telefon joylashuvi: animatsion sxema (SVG) ----------
+  const DIAGRAM_TYPE = { squat:'front', lunge:'front', pushup:'side', plank:'side', shoulder:'angle', row:'angle' };
+  function pdPersonStanding(cx, cy){
+    return `<circle cx="${cx}" cy="${cy-38}" r="9" fill="none" stroke="#C6FF4D" stroke-width="2.5"/>
+      <rect x="${cx-14}" y="${cy-27}" width="28" height="34" rx="8" fill="none" stroke="#C6FF4D" stroke-width="2.5"/>
+      <line x1="${cx-8}" y1="${cy+7}" x2="${cx-12}" y2="${cy+30}" stroke="#C6FF4D" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="${cx+8}" y1="${cy+7}" x2="${cx+12}" y2="${cy+30}" stroke="#C6FF4D" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  function pdPersonLying(cx, cy){
+    return `<circle cx="${cx-34}" cy="${cy}" r="9" fill="none" stroke="#C6FF4D" stroke-width="2.5"/>
+      <rect x="${cx-24}" y="${cy-8}" width="55" height="16" rx="8" fill="none" stroke="#C6FF4D" stroke-width="2.5"/>
+      <line x1="${cx+30}" y1="${cy-3}" x2="${cx+48}" y2="${cy-10}" stroke="#C6FF4D" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="${cx+30}" y1="${cy+3}" x2="${cx+48}" y2="${cy+10}" stroke="#C6FF4D" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  function pdPhone(cx, cy, rotationDeg){
+    return `<g class="pd-phone" transform="rotate(${rotationDeg} ${cx} ${cy})">
+      <rect x="${cx-9}" y="${cy-16}" width="18" height="32" rx="4" fill="#12190f" stroke="#C6FF4D" stroke-width="2"/>
+      <circle class="pd-dot" cx="${cx}" cy="${cy-10}" r="2" fill="#C6FF4D"/>
+    </g>`;
+  }
+  function pdBeam(x1,y1,x2,y2,x3,y3){
+    return `<polygon class="pd-beam" points="${x1},${y1} ${x2},${y2} ${x3},${y3}" fill="#C6FF4D"/>`;
+  }
+  const FLOOR_LINE = `<line x1="10" y1="132" x2="230" y2="132" stroke="#33422b" stroke-width="2" stroke-dasharray="4 5"/>`;
+  const PLACEMENT_DIAGRAMS = {
+    front: `<svg viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg">
+      ${FLOOR_LINE}
+      ${pdBeam(120,42, 58,126, 182,126)}
+      ${pdPhone(120,26,0)}
+      ${pdPersonStanding(120,118)}
+    </svg>`,
+    side: `<svg viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg">
+      ${FLOOR_LINE}
+      ${pdBeam(42,86, 112,118, 212,100)}
+      ${pdPhone(40,92,90)}
+      ${pdPersonLying(150,116)}
+    </svg>`,
+    angle: `<svg viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg">
+      ${FLOOR_LINE}
+      ${pdBeam(188,50, 68,126, 188,126)}
+      ${pdPhone(188,34,25)}
+      ${pdPersonStanding(108,118)}
+    </svg>`
+  };
+
+  // ---------- DATA: plan templates ----------
+  function buildPlan(goal){
+    if(goal === 'bulk'){
+      return {
+        title: "Mushak massasi rejasi — 3 kunlik split",
+        sub: "Og'ir og'irlik, kam takror. Har mashq: 4 to'plam.",
+        days: [
+          {label:"1-kun · Yelka & Triseps", items:[
+            {ex:"shoulder", sets:"4×10"}, {ex:"pushup", sets:"4×12"}
+          ]},
+          {label:"2-kun · Oyoq", items:[
+            {ex:"squat", sets:"4×10"}, {ex:"lunge", sets:"3×12"}
+          ]},
+          {label:"3-kun · Orqa & Qorin", items:[
+            {ex:"row", sets:"4×10"}, {ex:"plank", sets:"3×40 son"}
+          ]}
+        ]
+      };
+    } else {
+      return {
+        title: "Vazn kamaytirish rejasi — 3 kunlik aylanma",
+        sub: "Yengilroq og'irlik, ko'p takror, qisqa dam. Yog' yoqishga qaratilgan.",
+        days: [
+          {label:"1-kun · Butun tana", items:[
+            {ex:"squat", sets:"3×15"}, {ex:"pushup", sets:"3×15"}, {ex:"plank", sets:"3×30 son"}
+          ]},
+          {label:"2-kun · Kardio + Kuch", items:[
+            {ex:"lunge", sets:"3×15"}, {ex:"row", sets:"3×15"}
+          ]},
+          {label:"3-kun · Butun tana", items:[
+            {ex:"squat", sets:"4×15"}, {ex:"shoulder", sets:"3×12"}
+          ]}
+        ]
+      };
+    }
+  }
+
+  // ---------- STATE ----------
+  let selectedGoal = null;
+  let currentPlan = null;
+  let currentDay = 0;
+  // Bosh sahifa uchun holat — show()/enterApp() qaytgan foydalanuvchida darhol chaqirilishi mumkin,
+  // shuning uchun bu o'zgaruvchilar skript boshida e'lon qilinadi (TDZ xatosining oldini olish uchun)
+  const DAILY_BURN_GOAL = 650;
+  const WEEKDAY_LABELS = ['Du','Se','Cho','Pa','Ju','Sha','Ya'];
+  let homeSelectedDayIdx = null;
+  let currentExId = null;
+  let repCount = 0;
+  let targetReps = 10;
+  let stream = null;
+  let rafId = null;
+
+  // ---------- ELEMENTS ----------
+  const screens = {
+    name: document.getElementById('screen-name'),
+    contact: document.getElementById('screen-contact'),
+    profile: document.getElementById('screen-profile'),
+    bodyfat: document.getElementById('screen-bodyfat'),
+    home: document.getElementById('page-home'),
+    account: document.getElementById('page-account'),
+    food: document.getElementById('page-food'),
+    music: document.getElementById('page-music'),
+    plan: document.getElementById('screen-plan'),
+    exercise: document.getElementById('screen-exercise'),
+    camera: document.getElementById('screen-camera'),
+  };
+  const bottomNavEl = document.getElementById('bottom-nav');
+  const NAV_VISIBLE_ON = ['home','account','food','music','plan'];
+  const NAV_TAB_FOR = {home:'home', plan:'home', food:'food', music:'music', account:'account'};
+  // Mini-pleer holati — show() bularga tayanadi, shuning uchun script boshida e'lon qilinadi
+  // (aks holda qaytgan foydalanuvchi uchun avtomatik ochilishda "before initialization" xatosi bo'lardi)
+  const miniPlayerEl = document.getElementById('mini-player');
+  let playlist = [];
+  let currentTrackIndex = -1;
+  function refreshMiniPlayerVisibility(navShown){
+    const hasTrack = playlist.length > 0;
+    miniPlayerEl.classList.toggle('hidden', !hasTrack);
+    miniPlayerEl.classList.toggle('no-nav', !navShown);
+    document.body.classList.toggle('mp-only-mode', hasTrack && !navShown);
+  }
+  function show(name){
+    Object.values(screens).forEach(s=>s.classList.add('hidden'));
+    screens[name].classList.remove('hidden');
+    const showNav = NAV_VISIBLE_ON.includes(name);
+    document.body.classList.toggle('nav-mode', showNav);
+    bottomNavEl.classList.toggle('hidden', !showNav);
+    const activeTab = NAV_TAB_FOR[name] || null;
+    document.querySelectorAll('#bottom-nav .nav-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.tab === activeTab);
+    });
+    refreshMiniPlayerVisibility(showNav);
+    if(name === 'home') refreshHomePage();
+    window.scrollTo(0,0);
+  }
+
+  // ---------- STORAGE ----------
+  const STORAGE_KEY = 'aitrener_profile';
+  function loadProfile(){
+    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
+    catch(e){ return null; }
+  }
+  function saveProfile(patch){
+    const current = loadProfile() || {};
+    const merged = Object.assign(current, patch);
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); }catch(e){}
+    return merged;
+  }
+  let userProfile = loadProfile() || {};
+
+  // ---------- SCREEN 0A LOGIC: ISM / FAMILIYA ----------
+  const firstNameEl = document.getElementById('first-name');
+  const lastNameEl = document.getElementById('last-name');
+  const errFirstName = document.getElementById('err-first-name');
+  const errLastName = document.getElementById('err-last-name');
+  const nameContinueBtn = document.getElementById('btn-name-continue');
+
+  function checkNameReady(){
+    const firstOk = firstNameEl.value.trim().length > 0;
+    const lastOk = lastNameEl.value.trim().length > 0;
+    nameContinueBtn.disabled = !(firstOk && lastOk);
+  }
+  [firstNameEl, lastNameEl].forEach(el=>el.addEventListener('input', ()=>{
+    el.classList.remove('invalid');
+    el.previousElementSibling && null;
+    checkNameReady();
+  }));
+  document.getElementById('btn-back-contact').addEventListener('click', ()=> show('name'));
+  document.getElementById('btn-back-profile').addEventListener('click', ()=> show('contact'));
+  document.getElementById('btn-back-bodyfat').addEventListener('click', ()=> show('profile'));
+
+  nameContinueBtn.addEventListener('click', ()=>{
+    const firstOk = firstNameEl.value.trim().length > 0;
+    const lastOk = lastNameEl.value.trim().length > 0;
+    errFirstName.classList.toggle('show', !firstOk);
+    errLastName.classList.toggle('show', !lastOk);
+    firstNameEl.classList.toggle('invalid', !firstOk);
+    lastNameEl.classList.toggle('invalid', !lastOk);
+    if(!firstOk || !lastOk) return;
+    userProfile = saveProfile({firstName: firstNameEl.value.trim(), lastName: lastNameEl.value.trim()});
+    show('contact');
+  });
+
+  // ---------- SCREEN 0B LOGIC: TELEFON / EMAIL ----------
+  const contactValueEl = document.getElementById('contact-value');
+  const contactLabelEl = document.getElementById('contact-label');
+  const errContact = document.getElementById('err-contact');
+  const contactContinueBtn = document.getElementById('btn-contact-continue');
+  const tabPhone = document.getElementById('tab-phone');
+  const tabEmail = document.getElementById('tab-email');
+  let contactMode = 'phone';
+
+  function setContactMode(mode){
+    contactMode = mode;
+    tabPhone.classList.toggle('active', mode==='phone');
+    tabEmail.classList.toggle('active', mode==='email');
+    contactValueEl.type = mode==='phone' ? 'tel' : 'email';
+    contactLabelEl.textContent = mode==='phone' ? 'Telefon raqamingiz' : 'Email manzilingiz';
+    contactValueEl.placeholder = mode==='phone' ? 'masalan, +998 90 123 45 67' : 'masalan, sardor@mail.com';
+    contactValueEl.value = '';
+    contactValueEl.classList.remove('invalid');
+    errContact.classList.remove('show');
+    checkContactReady();
+  }
+  tabPhone.addEventListener('click', ()=>setContactMode('phone'));
+  tabEmail.addEventListener('click', ()=>setContactMode('email'));
+
+  function isContactValid(){
+    const v = contactValueEl.value.trim();
+    if(!v) return false;
+    if(contactMode === 'phone'){
+      const digits = v.replace(/[^0-9]/g,'');
+      return digits.length >= 7 && digits.length <= 15;
+    } else {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    }
+  }
+  function checkContactReady(){
+    contactContinueBtn.disabled = !isContactValid();
+  }
+  contactValueEl.addEventListener('input', ()=>{
+    contactValueEl.classList.remove('invalid');
+    errContact.classList.remove('show');
+    checkContactReady();
+  });
+  contactContinueBtn.addEventListener('click', ()=>{
+    if(!isContactValid()){
+      contactValueEl.classList.add('invalid');
+      errContact.classList.add('show');
+      return;
+    }
+    userProfile = saveProfile({contactMode, contactValue: contactValueEl.value.trim()});
+    show('profile');
+  });
+
+  // ---------- SCREEN 1 LOGIC: YOSH / BO'Y / VAZN ----------
+  const ageEl = document.getElementById('age');
+  const heightEl = document.getElementById('height');
+  const weightEl = document.getElementById('weight');
+  const errAge = document.getElementById('err-age');
+  const errHeight = document.getElementById('err-height');
+  const errWeight = document.getElementById('err-weight');
+  const genBtn = document.getElementById('btn-generate');
+
+  const LIMITS = {
+    age: {min:10, max:100},
+    height: {min:100, max:250},
+    weight: {min:20, max:300}
+  };
+  function isFieldValid(el, limits){
+    const v = parseFloat(el.value);
+    return el.value !== '' && !isNaN(v) && v >= limits.min && v <= limits.max;
+  }
+  function validateField(el, errEl, limits){
+    const ok = isFieldValid(el, limits);
+    el.classList.toggle('invalid', el.value !== '' && !ok);
+    errEl.classList.toggle('show', el.value !== '' && !ok);
+    return ok;
+  }
+  [{el:ageEl, err:errAge, lim:LIMITS.age}, {el:heightEl, err:errHeight, lim:LIMITS.height}, {el:weightEl, err:errWeight, lim:LIMITS.weight}]
+    .forEach(({el, err, lim})=>{
+      el.addEventListener('input', ()=>{ validateField(el, err, lim); checkReady(); });
+    });
+  function checkReady(){
+    const ok = isFieldValid(ageEl, LIMITS.age) && isFieldValid(heightEl, LIMITS.height) && isFieldValid(weightEl, LIMITS.weight);
+    genBtn.disabled = !ok;
+  }
+  genBtn.addEventListener('click', ()=>{
+    const ageOk = validateField(ageEl, errAge, LIMITS.age);
+    const heightOk = validateField(heightEl, errHeight, LIMITS.height);
+    const weightOk = validateField(weightEl, errWeight, LIMITS.weight);
+    if(!ageOk || !heightOk || !weightOk) return;
+    const age = parseFloat(ageEl.value), height = parseFloat(heightEl.value), weight = parseFloat(weightEl.value);
+    userProfile = saveProfile({age, height, weight});
+    showBodyFatResult(age, height, weight);
+    show('bodyfat');
+  });
+
+  // ---------- SCREEN 1B LOGIC: TANA YOG' FOIZI + MAQSAD ----------
+  function estimateBodyFat(age, heightCm, weightKg){
+    const heightM = heightCm / 100;
+    const bmi = weightKg / (heightM * heightM);
+    // Deurenberg formulasining jinssiz (o'rtacha) taxminiy varianti
+    let fat = (1.20 * bmi) + (0.23 * age) - 10.8;
+    if(fat < 3) fat = 3;
+    if(fat > 60) fat = 60;
+    return Math.round(fat * 10) / 10;
+  }
+  function fatLevelInfo(fat){
+    if(fat < 10) return "Juda past yog' darajasi";
+    if(fat < 20) return "Sog'lom / me'yorda";
+    if(fat < 25) return "Me'yordan biroz yuqori";
+    if(fat < 30) return "Ortiqcha vazn";
+    if(fat < 35) return "Birinchi darajadagi semizlik";
+    if(fat < 40) return "Ikkinchi darajadagi semizlik";
+    return "Uchinchi darajadagi semizlik";
+  }
+  function showBodyFatResult(age, height, weight){
+    const fat = estimateBodyFat(age, height, weight);
+    const name = (userProfile.firstName || '').trim() || 'Foydalanuvchi';
+    document.getElementById('fat-num').textContent = fat + '%';
+    document.getElementById('fat-line').textContent = `${name}, sizning tanangizdagi yog' foizi ${fat}%.`;
+    document.getElementById('fat-level').textContent = fatLevelInfo(fat);
+    userProfile = saveProfile({bodyFat: fat});
+  }
+  const bodyGoalBtns = document.querySelectorAll('#screen-bodyfat .goal-btn');
+  const goalContinueBtn = document.getElementById('btn-goal-continue');
+  bodyGoalBtns.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      bodyGoalBtns.forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      selectedGoal = b.dataset.goal;
+      goalContinueBtn.disabled = false;
+    });
+  });
+  goalContinueBtn.addEventListener('click', ()=>{
+    if(!selectedGoal) return;
+    userProfile = saveProfile({goal: selectedGoal, onboarded: true});
+    currentPlan = buildPlan(selectedGoal);
+    currentDay = 0;
+    renderPlan();
+    enterApp();
+  });
+
+  // ---------- GOAL LABELLARI (ekranlarda ko'rsatish uchun) ----------
+  const GOAL_LABELS = {
+    cut: "Vazn tashlash",
+    bulk: "Mushak massasini oshirish",
+    health: "Sog'liqni mustahkamlash",
+    shape: "Qomatni shakllantirish"
+  };
+
+  // ---------- KUNLIK STATISTIKA (kaloriya sarfi / istemoli) ----------
+  const DAILY_KEY = 'aitrener_daily';
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  }
+  function loadDaily(){
+    let data;
+    try{ data = JSON.parse(localStorage.getItem(DAILY_KEY) || 'null'); }catch(e){ data = null; }
+    if(!data || data.date !== todayStr()){
+      data = {date: todayStr(), burned: 0, consumed: 0, foodLog: []};
+    }
+    return data;
+  }
+  function saveDaily(data){
+    try{ localStorage.setItem(DAILY_KEY, JSON.stringify(data)); }catch(e){}
+  }
+  let dailyStats = loadDaily();
+  const HIST_KEY = 'aitrener_burn_hist';
+  function loadHist(){
+    try{ return JSON.parse(localStorage.getItem(HIST_KEY) || '{}'); }catch(e){ return {}; }
+  }
+  function saveHist(h){
+    try{ localStorage.setItem(HIST_KEY, JSON.stringify(h)); }catch(e){}
+  }
+  function recordBurnHistory(){
+    const h = loadHist();
+    h[todayStr()] = dailyStats.burned;
+    saveHist(h);
+  }
+  function addBurnedCalories(kcal){
+    dailyStats = loadDaily();
+    dailyStats.burned += kcal;
+    saveDaily(dailyStats);
+    recordBurnHistory();
+    updateHomeStats();
+  }
+  function addConsumedCalories(name, kcal){
+    dailyStats = loadDaily();
+    dailyStats.consumed += kcal;
+    dailyStats.foodLog.unshift({name, kcal, time: new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'})});
+    saveDaily(dailyStats);
+    renderFoodHistory();
+  }
+
+  // ---------- ILOVAGA KIRISH (onboarding tugagach yoki qaytib kelganda) ----------
+  function enterApp(){
+    dailyStats = loadDaily();
+    updateAccountPage();
+    show('home');
+  }
+
+  // ---------- QAYTGAN FOYDALANUVCHI: 0dan boshlamaslik ----------
+  (function resumeIfReturning(){
+    if(userProfile && userProfile.onboarded && userProfile.goal){
+      selectedGoal = userProfile.goal;
+      currentPlan = buildPlan(selectedGoal);
+      currentDay = 0;
+      renderPlan();
+      enterApp();
+    }
+  })();
+
+  // ---------- PAGE: BOSH SAHIFA ----------
+  function getCurrentWeekDates(){
+    const now = new Date();
+    const jsDay = now.getDay(); // 0=Yak..6=Shan
+    const mondayOffset = (jsDay === 0) ? -6 : 1 - jsDay;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    const dates = [];
+    for(let i=0;i<7;i++){
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  }
+  function renderWeekStrip(){
+    const dates = getCurrentWeekDates();
+    const now = new Date();
+    const todayIdx = dates.findIndex(d => d.toDateString() === now.toDateString());
+    if(homeSelectedDayIdx === null) homeSelectedDayIdx = (todayIdx === -1 ? 0 : todayIdx);
+    const planDays = (currentPlan && currentPlan.days) ? currentPlan.days : [];
+    const stripEl = document.getElementById('week-strip');
+    stripEl.innerHTML = '';
+    dates.forEach((d, i)=>{
+      const planDay = planDays.length ? planDays[i % planDays.length] : null;
+      const exCount = planDay ? planDay.items.length : 0;
+      const isRest = exCount === 0;
+      const dotCount = isRest ? 1 : Math.min(3, exCount);
+      let dotsHtml = '';
+      for(let k=0;k<dotCount;k++){
+        let dotClass = 'wdot ';
+        if(isRest) dotClass += 'dot-rest';
+        else if(i < todayIdx) dotClass += 'dot-done';
+        else if(i === todayIdx) dotClass += 'dot-today';
+        else dotClass += 'dot-future';
+        dotsHtml += `<span class="${dotClass}"></span>`;
+      }
+      const cell = document.createElement('div');
+      cell.className = 'week-cell' + (i === homeSelectedDayIdx ? ' selected' : '') + (i === todayIdx ? ' is-today' : '');
+      cell.innerHTML = `
+        <div class="week-day-lbl">${WEEKDAY_LABELS[i]}</div>
+        <div class="week-day-num">${d.getDate()}</div>
+        <div class="week-dots">${dotsHtml}</div>
+      `;
+      cell.addEventListener('click', ()=>{
+        homeSelectedDayIdx = i;
+        renderWeekStrip();
+        updateTodayWorkoutCard();
+      });
+      stripEl.appendChild(cell);
+    });
+  }
+  function updateTodayWorkoutCard(){
+    const planDays = (currentPlan && currentPlan.days) ? currentPlan.days : [];
+    const workoutEl = document.getElementById('home-today-workout');
+    if(!planDays.length){ workoutEl.textContent = '—'; return; }
+    const idx = (homeSelectedDayIdx === null ? 0 : homeSelectedDayIdx) % planDays.length;
+    const day = planDays[idx];
+    const parts = day.label.split('·');
+    workoutEl.textContent = parts.length > 1 ? parts.slice(1).join('·').trim() : day.label;
+  }
+  function updateHomeRing(){
+    const pct = Math.max(0, Math.min(100, Math.round((dailyStats.burned / DAILY_BURN_GOAL) * 100)));
+    document.getElementById('home-ring-pct').textContent = pct + '%';
+    document.getElementById('home-goal-kcal').textContent = DAILY_BURN_GOAL;
+    const circle = document.getElementById('home-ring-fg');
+    const circumference = 2 * Math.PI * 52;
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = circumference * (1 - pct / 100);
+  }
+  function renderHomeBars(){
+    const h = loadHist();
+    h[todayStr()] = dailyStats.burned;
+    const entries = Object.entries(h).sort((a,b)=> a[0] < b[0] ? -1 : 1).slice(-8);
+    const max = Math.max(1, ...entries.map(e=>e[1]));
+    const barsEl = document.getElementById('home-bars');
+    barsEl.innerHTML = '';
+    entries.forEach(([date, val])=>{
+      const heightPct = Math.max(10, Math.round((val / max) * 100));
+      const bar = document.createElement('div');
+      bar.className = 'mbar' + (date === todayStr() ? ' mbar-today' : '');
+      bar.style.height = heightPct + '%';
+      barsEl.appendChild(bar);
+    });
+  }
+  function updateHomeStats(){
+    document.getElementById('home-username').textContent = userProfile.firstName || 'Foydalanuvchi';
+    document.getElementById('home-burned-kcal').textContent = Math.round(dailyStats.burned) + ' kkal';
+    updateHomeRing();
+    renderHomeBars();
+  }
+  function refreshHomePage(){
+    dailyStats = loadDaily();
+    updateHomeStats();
+    renderWeekStrip();
+    updateTodayWorkoutCard();
+  }
+  document.getElementById('nav-home').addEventListener('click', ()=> show('home'));
+  document.getElementById('nav-food').addEventListener('click', ()=>{ renderFoodHistory(); show('food'); });
+  document.getElementById('nav-music').addEventListener('click', ()=> show('music'));
+  document.getElementById('nav-account').addEventListener('click', ()=>{ updateAccountPage(); show('account'); });
+  document.getElementById('btn-open-plan').addEventListener('click', ()=>{ renderPlan(); show('plan'); });
+  document.getElementById('btn-back-home-from-plan').addEventListener('click', ()=> show('home'));
+  document.getElementById('btn-home-start').addEventListener('click', ()=>{
+    const planDays = (currentPlan && currentPlan.days) ? currentPlan.days : [];
+    if(!planDays.length) return;
+    const idx = (homeSelectedDayIdx === null ? 0 : homeSelectedDayIdx) % planDays.length;
+    currentDay = idx;
+    const day = planDays[idx];
+    if(day.items && day.items[0]) openExercise(day.items[0].ex, day.items[0].sets);
+  });
+
+  // ---------- PAGE: PROFIL ----------
+  function updateAccountPage(){
+    document.getElementById('acc-fullname').textContent = [userProfile.firstName, userProfile.lastName].filter(Boolean).join(' ') || '-';
+    document.getElementById('acc-contact').textContent = userProfile.contactValue || '-';
+    document.getElementById('acc-age').textContent = userProfile.age ? (userProfile.age + ' yosh') : '-';
+    document.getElementById('acc-height').textContent = userProfile.height ? (userProfile.height + ' sm') : '-';
+    document.getElementById('acc-weight').textContent = userProfile.weight ? (userProfile.weight + ' kg') : '-';
+    document.getElementById('acc-bodyfat').textContent = (userProfile.bodyFat !== undefined && userProfile.bodyFat !== null) ? (userProfile.bodyFat + '%') : '-';
+    document.getElementById('acc-goal').textContent = GOAL_LABELS[userProfile.goal] || '-';
+  }
+
+  // ---------- KUN / TUN REJIMI ----------
+  const THEME_KEY = 'aitrener_theme';
+  const themeDayBtn = document.getElementById('theme-day');
+  const themeNightBtn = document.getElementById('theme-night');
+  function applyTheme(theme){
+    document.documentElement.classList.toggle('theme-light', theme === 'light');
+    themeDayBtn.classList.toggle('active', theme === 'light');
+    themeNightBtn.classList.toggle('active', theme !== 'light');
+    try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+  }
+  themeDayBtn.addEventListener('click', ()=> applyTheme('light'));
+  themeNightBtn.addEventListener('click', ()=> applyTheme('dark'));
+  // Boshlang'ich holatni <head> skriptida qo'llangan mavzuga moslashtirish
+  applyTheme(document.documentElement.classList.contains('theme-light') ? 'light' : 'dark');
+
+  function resetOnboarding(){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    userProfile = {};
+    selectedGoal = null;
+    bodyGoalBtns.forEach(x=>x.classList.remove('active'));
+    goalContinueBtn.disabled = true;
+    firstNameEl.value=''; lastNameEl.value=''; checkNameReady();
+    contactValueEl.value=''; checkContactReady();
+    ageEl.value=''; heightEl.value=''; weightEl.value=''; checkReady();
+    show('name');
+  }
+  document.getElementById('btn-restart-account').addEventListener('click', resetOnboarding);
+
+  // ---------- PAGE: KALORIYA HISOBLAGICH (kamera / rasm / matn) ----------
+  // unit: qaysi birlikda hisoblanadi (foydalanuvchiga ko'rsatiladi, stepper shu birlikni ko'paytiradi)
+  const FOOD_DB = [
+    // --- Milliy taomlar (asosan matn orqali qidiriladi) ---
+    {label:"Osh (palov)", kcal:560, unit:"porsiya (~300 g)", aliases:['osh','palov','plov']},
+    {label:"Lag'mon", kcal:420, unit:"porsiya", aliases:["lag'mon",'lagmon','lagman']},
+    {label:'Manti (4 dona)', kcal:360, unit:'4 dona', aliases:['manti']},
+    {label:'Chuchvara', kcal:330, unit:'porsiya (~250 g)', aliases:['chuchvara','pelmen']},
+    {label:'Somsa (1 dona)', kcal:290, unit:'1 dona', aliases:['somsa','samsa']},
+    {label:"Shashlik/kabob (go'sht)", kcal:250, unit:'1 sixi', aliases:['shashlik','kabob','kebab','shashlyk']},
+    {label:'Norin', kcal:480, unit:'porsiya', aliases:['norin']},
+    {label:'Dimlama', kcal:310, unit:'porsiya', aliases:['dimlama']},
+    {label:'Mastava', kcal:220, unit:'porsiya (bir kosа)', aliases:['mastava']},
+    {label:'Shurva', kcal:260, unit:'porsiya (bir kosа)', aliases:['shurva','sho\'rva']},
+    {label:'Qovurdoq', kcal:340, unit:'porsiya', aliases:['qovurdoq']},
+    {label:'Achichuk salat', kcal:60, unit:'porsiya', aliases:['achichuk','achchiq-chuchuk']},
+    {label:'Tandir non (1 dona)', kcal:290, unit:'1 dona', aliases:['tandir non','non','patir']},
+    {label:'Lavash', kcal:450, unit:'1 dona', aliases:['lavash','shaurma','shawarma','doner']},
+    {label:'Xonim', kcal:320, unit:'porsiya', aliases:['xonim','honim']},
+    {label:'Sendvich', kcal:350, unit:'1 dona', aliases:['sendvich','sandwich','buterbrod']},
+    {label:'Osh guruchi (bo\'ktirilgan)', kcal:200, unit:'100 g', aliases:['guruch','sholi','rice']},
+    {label:'Makaron (pasta, sousiz)', kcal:220, unit:'porsiya (~200 g)', aliases:['makaron','pasta']},
+    {label:'Kartoshka fri', kcal:312, unit:'porsiya (~150 g)', aliases:['fri','kartoshka fri','fries']},
+    {label:'Salat olivye', kcal:190, unit:'porsiya (~150 g)', aliases:['olivye','olivier']},
+    {label:'Tuxum (qaynatilgan, 1 dona)', kcal:78, unit:'1 dona', aliases:['tuxum','qaynatilgan tuxum','egg']},
+    {label:'Tuxum qovurma (2 dona)', kcal:180, unit:'porsiya', aliases:['tuxum qovurma','omlet','omelette']},
+    {label:'Sut (1 stakan)', kcal:122, unit:'1 stakan (250 ml)', aliases:['sut','milk']},
+    {label:"Tvorog", kcal:150, unit:'100 g', aliases:['tvorog','tvorog','suzma']},
+    {label:'Kefir/qatiq (1 stakan)', kcal:100, unit:'1 stakan (250 ml)', aliases:['kefir','qatiq','ayron']},
+    {label:'Choy (shakar bilan)', kcal:40, unit:'1 stakan', aliases:['choy','chой','tea']},
+    {label:'Qahva (sut/shakar bilan)', kcal:60, unit:'1 stakan', aliases:['qahva','kофе','coffee']},
+    {label:'Gazli ichimlik (kola va h.k.)', kcal:140, unit:'1 stakan (330 ml)', aliases:['kola','gazli ichimlik','cola','sprite','fanta']},
+    {label:'Sharbat (shakarli)', kcal:110, unit:'1 stakan', aliases:['sharbat','sok','juice']},
+    {label:'Tort (1 bo\'lak)', kcal:350, unit:'1 bo\'lak', aliases:['tort','cake','pirojnoe']},
+    {label:'Pechenye/keks', kcal:150, unit:'porsiya (~50 g)', aliases:['pechenye','keks','cookie','biskvit']},
+    // --- Xalqaro / rasm orqali taniladigan taomlar (mobilenet klasslari bilan bog'langan) ---
+    {label:'Chizburger', kcal:303, unit:'1 dona', keys:['cheeseburger'], aliases:['chizburger','cheeseburger']},
+    {label:'Gamburger', kcal:295, unit:'1 dona', keys:['hamburger'], aliases:['gamburger','burger']},
+    {label:'Hot-dog', kcal:290, unit:'1 dona', keys:['hotdog','hot dog','frankfurter'], aliases:['hot-dog','hot dog','sosiska']},
+    {label:'Pitsa (1 bo\'lak)', kcal:285, unit:'1 bo\'lak', keys:['pizza'], aliases:['pitsa','pizza']},
+    {label:'Pretzel', kcal:380, unit:'1 dona', keys:['pretzel'], aliases:['pretzel']},
+    {label:'Bagel', kcal:245, unit:'1 dona', keys:['bagel'], aliases:['bagel']},
+    {label:'Non (100 g)', kcal:265, unit:'100 g', keys:['french loaf','baguette','bread'], aliases:['non','bread','baton']},
+    {label:'Muzqaymoq', kcal:210, unit:'porsiya', keys:['ice cream'], aliases:['muzqaymoq','ice cream','morojniy']},
+    {label:'Shirinlik', kcal:300, unit:'porsiya', keys:['trifle'], aliases:['shirinlik']},
+    {label:'Karbonara pasta', kcal:400, unit:'porsiya', keys:['carbonara'], aliases:['karbonara']},
+    {label:'Burrito', kcal:326, unit:'1 dona', keys:['burrito'], aliases:['burrito']},
+    {label:"Go'sht rulet (100 g)", kcal:220, unit:'100 g', keys:['meat loaf','meatloaf'], aliases:["go'sht rulet"]},
+    {label:'Kartoshka pyuresi (100 g)', kcal:110, unit:'100 g', keys:['mashed potato'], aliases:['kartoshka pyuresi','pyure']},
+    {label:'Kartoshka (100 g)', kcal:87, unit:'100 g', keys:['potato'], aliases:['kartoshka','potato']},
+    {label:"Makkajo'xori (100 g)", kcal:96, unit:'100 g', keys:['corn'], aliases:["makkajo'xori",'kukuruza']},
+    {label:'Karam (100 g)', kcal:25, unit:'100 g', keys:['head cabbage','cabbage'], aliases:['karam','kapusta']},
+    {label:'Brokkoli (100 g)', kcal:34, unit:'100 g', keys:['broccoli'], aliases:['brokkoli']},
+    {label:'Bodring (100 g)', kcal:16, unit:'100 g', keys:['cucumber'], aliases:['bodring','ogurets']},
+    {label:'Pomidor (100 g)', kcal:18, unit:'100 g', keys:['tomato'], aliases:['pomidor','tomat']},
+    {label:'Qalampir (100 g)', kcal:20, unit:'100 g', keys:['bell pepper','pepper'], aliases:['qalampir','perets']},
+    {label:"Qo'ziqorin (100 g)", kcal:22, unit:'100 g', keys:['mushroom'], aliases:["qo'ziqorin",'gribы']},
+    {label:'Banan', kcal:105, unit:'1 dona', keys:['banana'], aliases:['banan','banana']},
+    {label:'Apelsin', kcal:62, unit:'1 dona', keys:['orange'], aliases:['apelsin','orange']},
+    {label:'Anor', kcal:83, unit:'1 dona', keys:['pomegranate'], aliases:['anor','granat']},
+    {label:'Qulupnay (100 g)', kcal:33, unit:'100 g', keys:['strawberry'], aliases:['qulupnay','klubnika']},
+    {label:'Olma', kcal:52, unit:'1 dona', keys:['granny smith','apple'], aliases:['olma','apple','yabloko']},
+    {label:'Uzum (100 g)', kcal:69, unit:'100 g', keys:['grape'], aliases:['uzum','vinograd']},
+    {label:'Tarvuz (100 g)', kcal:30, unit:'100 g', keys:['watermelon'], aliases:['tarvuz','arbuz']},
+    {label:'Qovun (100 g)', kcal:34, unit:'100 g', keys:['melon'], aliases:['qovun','dinya']},
+  ];
+
+  const GENERIC_FALLBACK = [
+    {label:'Yengil taom (salat, meva)', kcal:150, unit:'porsiya'},
+    {label:"O'rtacha taom (non, sho'rva)", kcal:350, unit:'porsiya'},
+    {label:"To'yimli/yog'li taom (osh, go'shtli)", kcal:550, unit:'porsiya'},
+  ];
+
+  let mobilenetModel = null;
+  async function ensureMobilenet(){
+    if(mobilenetModel) return mobilenetModel;
+    mobilenetModel = await mobilenet.load();
+    return mobilenetModel;
+  }
+  // Rasmdagi bir nechta bashoratni FOOD_DB bilan solishtirib, nomzodlar ro'yxatini qaytaradi
+  function matchCandidatesFromPredictions(preds){
+    const seen = new Set();
+    const out = [];
+    (preds || []).forEach(p=>{
+      const lower = p.className.toLowerCase();
+      const item = FOOD_DB.find(f => f.keys && f.keys.some(k => lower.includes(k)));
+      if(item && !seen.has(item.label)){
+        seen.add(item.label);
+        out.push({item, confidence: p.probability});
+      }
+    });
+    return out.slice(0, 4);
+  }
+  // Matn qidiruvi: aliaslar va nom bo'yicha moslikni topadi
+  function searchFoodByText(query){
+    const q = query.trim().toLowerCase();
+    if(!q) return [];
+    const scored = [];
+    FOOD_DB.forEach(item=>{
+      const names = [item.label.toLowerCase(), ...(item.aliases || [])];
+      let best = -1;
+      names.forEach(n=>{
+        if(n === q) best = Math.max(best, 3);
+        else if(n.startsWith(q)) best = Math.max(best, 2);
+        else if(n.includes(q)) best = Math.max(best, 1);
+      });
+      if(best >= 0) scored.push({item, score: best});
+    });
+    scored.sort((a,b)=> b.score - a.score);
+    return scored.slice(0, 6).map(s=>({item:s.item}));
+  }
+
+  const modeTabCamera = document.getElementById('mode-tab-camera');
+  const modeTabUpload = document.getElementById('mode-tab-upload');
+  const modeTabText = document.getElementById('mode-tab-text');
+  const scanPanelImage = document.getElementById('scan-panel-image');
+  const scanPanelText = document.getElementById('scan-panel-text');
+  const foodCameraInput = document.getElementById('food-camera-input');
+  const foodUploadInput = document.getElementById('food-upload-input');
+  const foodTextInput = document.getElementById('food-text-input');
+  const foodTextCandidatesEl = document.getElementById('food-text-candidates');
+  const scanStageEmpty = document.getElementById('scan-stage-empty');
+  const scanSweep = document.getElementById('scan-sweep');
+  const foodPreview = document.getElementById('food-preview');
+  const foodStatus = document.getElementById('food-status');
+  const foodCandidatesEl = document.getElementById('food-candidates');
+  const foodResultField = document.getElementById('food-result-field');
+  const foodDetectedName = document.getElementById('food-detected-name');
+  const foodDetectedConf = document.getElementById('food-detected-conf');
+  const foodKcalInput = document.getElementById('food-kcal-input');
+  const portionValueEl = document.getElementById('portion-value');
+  const portionUnitEl = document.getElementById('portion-unit');
+
+  let selectedFood = null; // {label, kcal, unit}
+  let portionCount = 1;
+
+  function setActiveModeTab(mode){
+    [modeTabCamera, modeTabUpload, modeTabText].forEach(t=>t.classList.remove('active'));
+    if(mode === 'camera') modeTabCamera.classList.add('active');
+    if(mode === 'upload') modeTabUpload.classList.add('active');
+    if(mode === 'text') modeTabText.classList.add('active');
+    scanPanelImage.classList.toggle('hidden', mode === 'text');
+    scanPanelText.classList.toggle('hidden', mode !== 'text');
+  }
+  modeTabCamera.addEventListener('click', ()=>{ setActiveModeTab('camera'); foodCameraInput.click(); });
+  modeTabUpload.addEventListener('click', ()=>{ setActiveModeTab('upload'); foodUploadInput.click(); });
+  modeTabText.addEventListener('click', ()=>{ setActiveModeTab('text'); foodTextInput.focus(); });
+  document.getElementById('btn-open-camera').addEventListener('click', ()=> foodCameraInput.click());
+  document.getElementById('btn-open-upload').addEventListener('click', ()=> foodUploadInput.click());
+
+  function selectFood(item, confidence){
+    selectedFood = item;
+    portionCount = 1;
+    portionValueEl.textContent = '1';
+    portionUnitEl.textContent = item.unit;
+    foodDetectedName.textContent = item.label;
+    foodDetectedConf.textContent = (confidence != null) ? `Ishonch: ~${Math.round(confidence*100)}%` : '';
+    foodKcalInput.value = Math.round(item.kcal * portionCount);
+    foodResultField.classList.remove('hidden');
+  }
+  function renderCandidateChips(container, candidates, withConfidence){
+    container.innerHTML = '';
+    candidates.forEach(c=>{
+      const chip = document.createElement('div');
+      chip.className = 'candidate-chip';
+      if(withConfidence && c.confidence != null){
+        chip.classList.add(c.confidence >= 0.45 ? 'conf-high' : (c.confidence >= 0.2 ? 'conf-mid' : 'conf-low'));
+      }
+      chip.innerHTML = `<span>${c.item.label}</span>` + (withConfidence && c.confidence != null ? `<span class="conf">${Math.round(c.confidence*100)}%</span>` : '');
+      chip.addEventListener('click', ()=>{
+        container.querySelectorAll('.candidate-chip').forEach(el=>el.classList.remove('selected'));
+        chip.classList.add('selected');
+        selectFood(c.item, withConfidence ? c.confidence : null);
+      });
+      container.appendChild(chip);
+    });
+  }
+
+  portionValueEl && document.getElementById('portion-minus').addEventListener('click', ()=>{
+    if(!selectedFood || portionCount <= 1) return;
+    portionCount -= 1;
+    portionValueEl.textContent = String(portionCount);
+    foodKcalInput.value = Math.round(selectedFood.kcal * portionCount);
+  });
+  document.getElementById('portion-plus').addEventListener('click', ()=>{
+    if(!selectedFood || portionCount >= 20) return;
+    portionCount += 1;
+    portionValueEl.textContent = String(portionCount);
+    foodKcalInput.value = Math.round(selectedFood.kcal * portionCount);
+  });
+
+  const mismatchLink = document.getElementById('btn-mismatch-to-text');
+  mismatchLink.addEventListener('click', ()=>{ setActiveModeTab('text'); foodTextInput.focus(); });
+
+  [foodCameraInput, foodUploadInput].forEach(inputEl=>{
+    inputEl.addEventListener('change', async ()=>{
+      const file = inputEl.files[0];
+      if(!file) return;
+      foodResultField.classList.add('hidden');
+      foodCandidatesEl.classList.add('hidden');
+      mismatchLink.classList.add('hidden');
+      const url = URL.createObjectURL(file);
+      foodPreview.src = url;
+      foodPreview.classList.remove('hidden');
+      scanStageEmpty.classList.add('hidden');
+      scanSweep.classList.remove('hidden');
+      foodStatus.textContent = 'Taom aniqlanmoqda…';
+      foodPreview.onload = async ()=>{
+        try{
+          const model = await ensureMobilenet();
+          const preds = await model.classify(foodPreview);
+          const candidates = matchCandidatesFromPredictions(preds);
+          scanSweep.classList.add('hidden');
+          if(candidates.length > 0 && candidates[0].confidence >= 0.45){
+            renderCandidateChips(foodCandidatesEl, candidates, true);
+            foodCandidatesEl.classList.remove('hidden');
+            foodCandidatesEl.querySelector('.candidate-chip').classList.add('selected');
+            selectFood(candidates[0].item, candidates[0].confidence);
+            foodStatus.textContent = "Aniqlandi — noto'g'ri bo'lsa, boshqa variantni tanlang.";
+          } else if(candidates.length > 0){
+            renderCandidateChips(foodCandidatesEl, candidates, true);
+            foodCandidatesEl.classList.remove('hidden');
+            foodStatus.textContent = "";
+            const warn = document.createElement('div');
+            warn.className = 'low-confidence-warning';
+            warn.textContent = "⚠️ Ishonch darajasi past — AI rasmni aniq tanimadi. Iltimos, quyidagi variantlardan to'g'risini tanlang yoki nomini yozib qidiring.";
+            foodCandidatesEl.appendChild(warn);
+          } else {
+            renderCandidateChips(foodCandidatesEl, GENERIC_FALLBACK.map(item=>({item})), false);
+            foodCandidatesEl.classList.remove('hidden');
+            foodStatus.textContent = "Taom turi aniq tanilmadi. Yaqin toifani tanlang yoki \"Yozish\" bo'limidan aniq nomini kiriting.";
+          }
+          mismatchLink.classList.remove('hidden');
+        }catch(err){
+          scanSweep.classList.add('hidden');
+          foodStatus.textContent = "AI modelini yuklab bo'lmadi. Internetga ulanishni tekshiring.";
+        }
+      };
+    });
+  });
+
+  foodTextInput.addEventListener('input', ()=>{
+    const matches = searchFoodByText(foodTextInput.value);
+    if(matches.length === 0){
+      foodTextCandidatesEl.innerHTML = '';
+      document.getElementById('food-text-hint').textContent = foodTextInput.value.trim()
+        ? "Mos taom topilmadi — nomini boshqacharoq yozib ko'ring."
+        : "Taom nomini yozing — mos variantlar shu yerda chiqadi.";
+      return;
+    }
+    document.getElementById('food-text-hint').textContent = '';
+    renderCandidateChips(foodTextCandidatesEl, matches, false);
+  });
+
+  document.getElementById('btn-add-food-kcal').addEventListener('click', ()=>{
+    const kcal = parseFloat(foodKcalInput.value);
+    if(isNaN(kcal) || kcal <= 0) return;
+    const name = selectedFood ? selectedFood.label : "Aniqlanmagan taom";
+    addConsumedCalories(name, Math.round(kcal));
+    foodResultField.classList.add('hidden');
+    foodCandidatesEl.classList.add('hidden');
+    mismatchLink.classList.add('hidden');
+    foodTextCandidatesEl.innerHTML = '';
+    foodTextInput.value = '';
+    foodPreview.classList.add('hidden');
+    scanStageEmpty.classList.remove('hidden');
+    foodCameraInput.value = '';
+    foodUploadInput.value = '';
+    selectedFood = null;
+    foodStatus.textContent = "Qo'shildi ✓ Yana bir taom qo'shishingiz mumkin.";
+  });
+  function renderFoodHistory(){
+    dailyStats = loadDaily();
+    document.getElementById('food-consumed-total').textContent = Math.round(dailyStats.consumed) + ' kkal';
+    const listEl = document.getElementById('food-history-list');
+    listEl.innerHTML = '';
+    dailyStats.foodLog.forEach(entry=>{
+      const row = document.createElement('div');
+      row.className = 'profile-row';
+      row.innerHTML = `<span>${entry.time} · ${entry.name}</span><b>${entry.kcal} kkal</b>`;
+      listEl.appendChild(row);
+    });
+  }
+
+  // ---------- PAGE: MUSIQA (qurilmadagi musiqa kutubxonasi) ----------
+  const musicDirInput = document.getElementById('music-dir-input');
+  const musicFileInput = document.getElementById('music-file-input');
+  const musicPlaylistEl = document.getElementById('music-playlist');
+  const musicEmptyCard = document.getElementById('music-empty-card');
+  const musicLibraryCard = document.getElementById('music-library-card');
+  const musicSearchEl = document.getElementById('music-search');
+  const musicCountEl = document.getElementById('music-count');
+  const musicNoResultsEl = document.getElementById('music-no-results');
+  const audioPlayer = document.getElementById('audio-player');
+  const miniPlayerTitle = document.getElementById('mini-player-title');
+  const mpPlayPause = document.getElementById('mp-playpause');
+
+  const AUDIO_EXT_RE = /\.(mp3|m4a|aac|wav|ogg|oga|flac|wma|opus|weba)$/i;
+  let musicSearchQuery = '';
+
+  function isAudioFile(f){
+    return (f.type && f.type.startsWith('audio/')) || AUDIO_EXT_RE.test(f.name);
+  }
+
+  function formatDuration(sec){
+    if(!isFinite(sec) || sec <= 0) return '';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function addFilesToPlaylist(fileList){
+    const files = Array.from(fileList || []).filter(isAudioFile);
+    if(files.length === 0) return;
+    const newTracks = files.map(f=>({
+      name: f.name.replace(/\.[^/.]+$/, ''),
+      url: URL.createObjectURL(f),
+      duration: null
+    }));
+    const wasEmpty = playlist.length === 0;
+    const currentTrack = currentTrackIndex >= 0 ? playlist[currentTrackIndex] : null;
+    playlist = playlist.concat(newTracks).sort((a,b)=> a.name.localeCompare(b.name, 'uz'));
+    // currentTrackIndex may have shifted after sorting — re-locate the currently playing track
+    if(currentTrack){
+      currentTrackIndex = playlist.indexOf(currentTrack);
+    }
+    musicEmptyCard.classList.add('hidden');
+    musicLibraryCard.classList.remove('hidden');
+    renderPlaylist();
+    loadDurations(newTracks);
+    if(wasEmpty) playTrack(0);
+  }
+
+  function loadDurations(tracks){
+    tracks.forEach(track=>{
+      const probe = new Audio();
+      probe.preload = 'metadata';
+      probe.src = track.url;
+      probe.addEventListener('loadedmetadata', ()=>{
+        track.duration = probe.duration;
+        renderPlaylist();
+      }, { once: true });
+    });
+  }
+
+  function getFilteredPlaylist(){
+    if(!musicSearchQuery) return playlist.map((t,i)=>i);
+    const q = musicSearchQuery.toLowerCase();
+    return playlist.map((t,i)=>i).filter(i=> playlist[i].name.toLowerCase().includes(q));
+  }
+
+  function renderPlaylist(){
+    const indices = getFilteredPlaylist();
+    musicCountEl.textContent = `${playlist.length} ta qo'shiq`;
+    musicPlaylistEl.innerHTML = '';
+    musicNoResultsEl.classList.toggle('hidden', indices.length > 0 || playlist.length === 0);
+    indices.forEach((i, pos)=>{
+      const track = playlist[i];
+      const row = document.createElement('div');
+      row.className = 'track-row' + (i===currentTrackIndex ? ' playing' : '');
+      const isPlayingNow = i===currentTrackIndex && !audioPlayer.paused;
+      row.innerHTML = `
+        <div class="track-idx">${pos + 1}</div>
+        <div class="track-art">${isPlayingNow ? '🔊' : '🎵'}</div>
+        <div class="track-info"><div class="track-name">${track.name}</div></div>
+        <div class="track-duration">${formatDuration(track.duration)}</div>
+        <div class="track-play-ico">${isPlayingNow ? '⏸' : '▶️'}</div>
+      `;
+      row.addEventListener('click', ()=> playTrack(i));
+      musicPlaylistEl.appendChild(row);
+    });
+  }
+  function playTrack(i){
+    if(i < 0 || i >= playlist.length) return;
+    currentTrackIndex = i;
+    audioPlayer.src = playlist[i].url;
+    audioPlayer.play();
+    miniPlayerTitle.textContent = playlist[i].name;
+    refreshMiniPlayerVisibility(!bottomNavEl.classList.contains('hidden'));
+    renderPlaylist();
+  }
+  function playShuffledFromStart(){
+    if(playlist.length === 0) return;
+    playTrack(Math.floor(Math.random() * playlist.length));
+  }
+
+  document.getElementById('btn-load-device-music').addEventListener('click', ()=> musicDirInput.click());
+  document.getElementById('btn-load-music-files').addEventListener('click', ()=> musicFileInput.click());
+  document.getElementById('btn-add-more-music').addEventListener('click', ()=> musicDirInput.click());
+  document.getElementById('music-shuffle-all').addEventListener('click', playShuffledFromStart);
+  musicSearchEl.addEventListener('input', ()=>{
+    musicSearchQuery = musicSearchEl.value.trim();
+    renderPlaylist();
+  });
+  musicDirInput.addEventListener('change', ()=>{
+    addFilesToPlaylist(musicDirInput.files);
+    musicDirInput.value = '';
+  });
+  musicFileInput.addEventListener('change', ()=>{
+    addFilesToPlaylist(musicFileInput.files);
+    musicFileInput.value = '';
+  });
+  mpPlayPause.addEventListener('click', ()=>{
+    if(audioPlayer.paused){ audioPlayer.play(); } else { audioPlayer.pause(); }
+  });
+  audioPlayer.addEventListener('play', ()=>{ mpPlayPause.textContent = '⏸'; renderPlaylist(); });
+  audioPlayer.addEventListener('pause', ()=>{ mpPlayPause.textContent = '▶️'; renderPlaylist(); });
+  audioPlayer.addEventListener('ended', ()=>{
+    if(currentTrackIndex < playlist.length - 1) playTrack(currentTrackIndex + 1);
+  });
+  document.getElementById('mp-next').addEventListener('click', ()=> playTrack(currentTrackIndex + 1));
+  document.getElementById('mp-prev').addEventListener('click', ()=> playTrack(currentTrackIndex - 1));
+
+  // ---------- SCREEN 2 LOGIC ----------
+  function renderPlan(){
+    document.getElementById('plan-title').textContent = currentPlan.title;
+    document.getElementById('plan-sub').textContent = currentPlan.sub;
+
+    const tabsEl = document.getElementById('day-tabs');
+    tabsEl.innerHTML = '';
+    currentPlan.days.forEach((d,i)=>{
+      const t = document.createElement('div');
+      t.className = 'day-tab' + (i===currentDay ? ' active' : '');
+      t.textContent = d.label.split('·')[0].trim();
+      t.addEventListener('click', ()=>{ currentDay = i; renderPlan(); });
+      tabsEl.appendChild(t);
+    });
+
+    const listEl = document.getElementById('exercise-list');
+    listEl.innerHTML = '';
+    const day = currentPlan.days[currentDay];
+    day.items.forEach(item=>{
+      const row = document.createElement('div');
+      row.className = 'ex-row';
+      row.innerHTML = `
+        <div>
+          <div class="ex-name">${EXO[item.ex].name}</div>
+          <div class="ex-meta">${item.sets}</div>
+        </div>
+        <div class="ex-arrow">→</div>
+      `;
+      row.addEventListener('click', ()=> openExercise(item.ex, item.sets));
+      listEl.appendChild(row);
+    });
+  }
+  document.getElementById('btn-restart').addEventListener('click', resetOnboarding);
+
+  // ---------- SCREEN 3 LOGIC: exercise + animation ----------
+  function openExercise(exId, sets){
+    currentExId = exId;
+    const ex = EXO[exId];
+    document.getElementById('ex-title').textContent = ex.name;
+    document.getElementById('ex-instructions').innerHTML = ex.instructions;
+    document.getElementById('ex-placement-tip').innerHTML = PLACEMENT_TIPS[exId] || PLACEMENT_TIPS.squat;
+    document.getElementById('ex-placement-diagram').innerHTML = PLACEMENT_DIAGRAMS[DIAGRAM_TYPE[exId] || 'front'];
+    // parse target reps from sets string like "4×10"
+    const m = sets.match(/×\s*(\d+)/);
+    targetReps = m ? parseInt(m[1]) : 10;
+    show('exercise');
+    startFigureAnimation(exId);
+  }
+  document.getElementById('btn-back-plan').addEventListener('click', ()=>{
+    stopFigureAnimation();
+    show('plan');
+  });
+
+  // ---------- 3D mashq manekeni (Three.js) ----------
+  let scene3d, camera3d, renderer3d, controls3d, rig3d;
+  let figAnimId = null;
+  let figT = 0, figDir = 1, figBreathT = 0;
+  let currentPoseId = null;
+  const figClock = (typeof THREE !== 'undefined') ? new THREE.Clock() : null;
+  const lerp = (a,b,t)=> a + (b-a)*t;
+
+  // ---------- Rigged FBX modelni yuklash va skelet suyaklarini bog'lash ----------
+  const MODEL_FBX_URL = './assets/canIget.fbx';
+  const MODEL_TEXTURE_URL = './assets/canIget_diffuse.jpg';
+  const RIG_BONE_NAMES = {
+    torso:    'CC_Base_Spine01',
+    hipL:     'CC_Base_L_Thigh',   hipR:     'CC_Base_R_Thigh',
+    kneeL:    'CC_Base_L_Calf',    kneeR:    'CC_Base_R_Calf',
+    shoulderL:'CC_Base_L_Upperarm',shoulderR:'CC_Base_R_Upperarm',
+    elbowL:   'CC_Base_L_Forearm', elbowR:   'CC_Base_R_Forearm',
+    footL:    'CC_Base_L_Foot',    footR:    'CC_Base_R_Foot'
+  };
+  // Mashqlar oldinga egilish/bukilish uchun jahon (world) X o'qidan, yon ko'tarilish uchun Z o'qidan foydalanadi.
+  // Model teskari tomonga egilib/ko'tarilib qolsa (masalan squat'da orqaga egilsa), shu ishorani -1 ga o'zgartiring.
+  const AXIS_X = (typeof THREE !== 'undefined') ? new THREE.Vector3(1,0,0) : null;
+  const AXIS_Z = (typeof THREE !== 'undefined') ? new THREE.Vector3(0,0,1) : null;
+  let FRONT_SIGN = 1; // oldinga egilish/bukilish yo'nalishi
+  let SIDE_SIGN  = 1; // qo'lni yon tomonga ko'tarish yo'nalishi
+
+  // Bir suyakning ota-bo'g'ini joriy dunyo aylanishiga nisbatan berilgan "dunyo o'qi"ni
+  // shu suyakning mahalliy (local) fazosiga o'giradi — shu tufayli rig qanday yig'ilgan bo'lishidan
+  // qat'i nazar (Reallusion/Tripo, Mixamo va h.k.), burilish yo'nalishi doim to'g'ri chiqadi.
+  function localAxisFromWorld(bone, worldAxis){
+    const invParentQuat = bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+    return worldAxis.clone().applyQuaternion(invParentQuat).normalize();
+  }
+  function setBoneBend(bone, worldAxis, angle){
+    if(!bone || !bone.userData || !bone.userData.bindQuat) return;
+    const axisLocal = localAxisFromWorld(bone, worldAxis);
+    const delta = new THREE.Quaternion().setFromAxisAngle(axisLocal, angle);
+    bone.quaternion.copy(delta).multiply(bone.userData.bindQuat);
+    bone.updateMatrixWorld(true);
+  }
+
+  let rigLoadPromise = null;
+  function loadRig3d(){
+    if(rigLoadPromise) return rigLoadPromise;
+    rigLoadPromise = new Promise((resolve)=>{
+      if(typeof THREE.FBXLoader === 'undefined'){ resolve({error:"FBXLoader kutubxonasi yuklanmadi (CDN skript ishlamadi yoki internet yo'q)"}); return; }
+      const texLoader = new THREE.TextureLoader();
+      const diffuseTex = texLoader.load(MODEL_TEXTURE_URL);
+      // Eslatma: agar textura tepa-past teskari ko'rinsa, quyidagi qatorni true/false qilib almashtiring.
+      diffuseTex.flipY = true;
+      if(THREE.sRGBEncoding) diffuseTex.encoding = THREE.sRGBEncoding;
+
+      const fbxLoader = new THREE.FBXLoader();
+      fbxLoader.load(MODEL_FBX_URL, (object)=>{
+        // Bu model Tripo AI orqali generatsiya qilingan va Z-up formatda saqlangan
+        // (uch.js esa Y-up kutadi) — shu sabab model "yotgan" holatda chiqar edi.
+        // Quyidagi qator uni tik holatga aylantiradi. Agar model hali ham noto'g'ri
+        // burchak ostida tursa (masalan orqasi bilan yotib qolsa), ishorani -1 ga
+        // (ya'ni Math.PI/2 ga) almashtirib ko'ring.
+        object.rotation.x = -Math.PI / 2;
+        object.updateMatrixWorld(true);
+
+        object.traverse(child=>{
+          if(child.isMesh){
+            const applyTex = (mat)=>{ mat.map = diffuseTex; mat.transparent = false; mat.needsUpdate = true; };
+            if(Array.isArray(child.material)) child.material.forEach(applyTex);
+            else if(child.material) applyTex(child.material);
+          }
+        });
+
+        // Modelni bir xil balandlikka (~1.8 birlik) keltirib, tovonlarini y=0 ga tekislaymiz
+        const rawBox = new THREE.Box3().setFromObject(object);
+        const rawHeight = (rawBox.max.y - rawBox.min.y) || 1;
+        const scale = 1.8 / rawHeight;
+        object.scale.setScalar(scale);
+        object.updateMatrixWorld(true);
+        const box2 = new THREE.Box3().setFromObject(object);
+        const center = box2.getCenter(new THREE.Vector3());
+        object.position.x -= center.x;
+        object.position.z -= center.z;
+        object.position.y -= box2.min.y;
+        object.updateMatrixWorld(true);
+
+        const wrap = new THREE.Group();
+        wrap.add(object);
+
+        const getBone = n => object.getObjectByName(n);
+        const rig = {
+          root: wrap,
+          groundBaseY: 0,
+          torso: getBone(RIG_BONE_NAMES.torso),
+          hips:      { L:getBone(RIG_BONE_NAMES.hipL),      R:getBone(RIG_BONE_NAMES.hipR) },
+          knees:     { L:getBone(RIG_BONE_NAMES.kneeL),     R:getBone(RIG_BONE_NAMES.kneeR) },
+          shoulders: { L:getBone(RIG_BONE_NAMES.shoulderL), R:getBone(RIG_BONE_NAMES.shoulderR) },
+          elbows:    { L:getBone(RIG_BONE_NAMES.elbowL),    R:getBone(RIG_BONE_NAMES.elbowR) },
+          feet:      { L:getBone(RIG_BONE_NAMES.footL),     R:getBone(RIG_BONE_NAMES.footR) }
+        };
+        [rig.torso, rig.hips.L, rig.hips.R, rig.knees.L, rig.knees.R,
+         rig.shoulders.L, rig.shoulders.R, rig.elbows.L, rig.elbows.R].forEach(b=>{
+          if(b) b.userData.bindQuat = b.quaternion.clone();
+        });
+
+        resolve(rig);
+      }, undefined, (err)=>{
+        console.error('FBX modelni yuklashda xato:', err);
+        resolve({error: (err && (err.message || err.type || String(err))) || "Noma'lum xato (fayl yo'li yoki formatida muammo bo'lishi mumkin)"});
+      });
+    });
+    return rigLoadPromise;
+  }
+
+  // Har bir mashq uchun alohida "tinch" va "ish" holati burchaklari (radianda)
+  // shAxis: 'x' = qo'l oldinga/orqaga harakatlanadi (masalan squat, row); 'z' = qo'l yon tomonga (masalan press)
+  const POSE_DEFS = {
+    squat: {
+      pelvisY:{rest:1.0, work:0.62},
+      torso:{rest:0.05, work:0.35},
+      hipL:{rest:0.05, work:-0.75}, hipR:{rest:0.05, work:-0.75},
+      kneeL:{rest:0.05, work:0.85}, kneeR:{rest:0.05, work:0.85},
+      shAxis:'x',
+      shL:{rest:0, work:-0.9}, shR:{rest:0, work:-0.9},
+      elL:{rest:0.1, work:0.25}, elR:{rest:0.1, work:0.25}
+    },
+    lunge: { // oldingi oyoq (L) oldinga egiladi, orqadagi (R) orqaga cho'ziladi
+      pelvisY:{rest:1.0, work:0.78},
+      torso:{rest:0.02, work:0.12},
+      hipL:{rest:0.05, work:-0.85}, hipR:{rest:0.05, work:0.45},
+      kneeL:{rest:0.05, work:1.00}, kneeR:{rest:0.05, work:0.15},
+      shAxis:'x',
+      shL:{rest:0, work:-0.6}, shR:{rest:0, work:-0.6},
+      elL:{rest:0.2, work:0.25}, elR:{rest:0.2, work:0.25}
+    },
+    pushup: { // gavda deyarli gorizontal — yelka va tirsak birga harakatlanadi, shu orqali tana pastga-tepaga boradi
+      rootX: Math.PI/2,
+      torso:{rest:0, work:0.05},
+      hipL:{rest:0, work:0}, hipR:{rest:0, work:0},
+      kneeL:{rest:0, work:0}, kneeR:{rest:0, work:0},
+      shAxis:'z',
+      shL:{rest:0.35, work:1.05}, shR:{rest:-0.35, work:-1.05},
+      elL:{rest:-0.1, work:-1.3}, elR:{rest:-0.1, work:-1.3}
+    },
+    plank: { // statik — juda kichik "nafas olish" harakati
+      rootX: Math.PI/2,
+      torso:{rest:0.02, work:0.02},
+      hipL:{rest:0, work:0}, hipR:{rest:0, work:0},
+      kneeL:{rest:0, work:0}, kneeR:{rest:0, work:0},
+      shAxis:'z',
+      shL:{rest:0.9, work:0.9}, shR:{rest:-0.9, work:-0.9},
+      elL:{rest:-1.2, work:-1.2}, elR:{rest:-1.2, work:-1.2}
+    },
+    shoulder: { // dumbbell press — yon tomondan yuqoriga
+      torso:{rest:0, work:0},
+      hipL:{rest:0, work:0}, hipR:{rest:0, work:0},
+      kneeL:{rest:0.05, work:0.05}, kneeR:{rest:0.05, work:0.05},
+      shAxis:'z',
+      shL:{rest:1.45, work:3.05}, shR:{rest:-1.45, work:-3.05},
+      elL:{rest:-1.5, work:-0.05}, elR:{rest:-1.5, work:-0.05}
+    },
+    row: { // biroz oldinga egilgan holat, tirsak+yelka orqaga-yuqoriga tortiladi
+      torso:{rest:0.85, work:0.85},
+      hipL:{rest:0.12, work:0.12}, hipR:{rest:0.12, work:0.12},
+      kneeL:{rest:0.22, work:0.22}, kneeR:{rest:0.22, work:0.22},
+      shAxis:'x',
+      shL:{rest:-0.85, work:0.15}, shR:{rest:-0.85, work:0.15},
+      elL:{rest:0.1, work:1.0}, elR:{rest:0.1, work:1.0}
+    }
+  };
+
+  function applyPose3d(exId, t){
+    if(!rig3d) return;
+    const d = POSE_DEFS[exId] || POSE_DEFS.squat;
+    const py = d.pelvisY || {rest:1.0, work:1.0};
+    const shAxis = d.shAxis || 'z';
+
+    // Butun tanani (root guruhini) squat/lunge chuqurligicha pastga tushiramiz —
+    // aniq tekislash pastdagi "tovonni yerga tekislash" bosqichida amalga oshadi.
+    rig3d.root.rotation.x = d.rootX || 0;
+    const drop = (py.rest - py.work);
+    rig3d.root.position.y = rig3d.groundBaseY - lerp(0, drop, t);
+    rig3d.root.updateMatrixWorld(true);
+
+    setBoneBend(rig3d.torso, AXIS_X, FRONT_SIGN * lerp(d.torso.rest, d.torso.work, t));
+
+    setBoneBend(rig3d.hips.L,  AXIS_X, FRONT_SIGN * lerp(d.hipL.rest, d.hipL.work, t));
+    setBoneBend(rig3d.hips.R,  AXIS_X, FRONT_SIGN * lerp(d.hipR.rest, d.hipR.work, t));
+    setBoneBend(rig3d.knees.L, AXIS_X, FRONT_SIGN * lerp(d.kneeL.rest, d.kneeL.work, t));
+    setBoneBend(rig3d.knees.R, AXIS_X, FRONT_SIGN * lerp(d.kneeR.rest, d.kneeR.work, t));
+
+    if(shAxis === 'x'){
+      setBoneBend(rig3d.shoulders.L, AXIS_X, FRONT_SIGN * lerp(d.shL.rest, d.shL.work, t));
+      setBoneBend(rig3d.shoulders.R, AXIS_X, FRONT_SIGN * lerp(d.shR.rest, d.shR.work, t));
+    } else {
+      // Manfiy ishora bilan: qo'l yelkadan chetga (tanadan uzoqlashib) aylanadi,
+      // aks holda harakat o'rtasida qo'l ko'krak ichidan o'tib ketardi.
+      setBoneBend(rig3d.shoulders.L, AXIS_Z, -SIDE_SIGN * lerp(d.shL.rest, d.shL.work, t));
+      setBoneBend(rig3d.shoulders.R, AXIS_Z, -SIDE_SIGN * lerp(d.shR.rest, d.shR.work, t));
+    }
+    setBoneBend(rig3d.elbows.L, AXIS_X, FRONT_SIGN * lerp(d.elL.rest, d.elL.work, t));
+    setBoneBend(rig3d.elbows.R, AXIS_X, FRONT_SIGN * lerp(d.elR.rest, d.elR.work, t));
+
+    // Tanani "yerga" avtomatik tekislash — endi FAQAT tovonlarga emas, balki butun
+    // tananing eng past nuqtasiga (Box3) qarab tekislaymiz. Bu squat/lunge kabi tik
+    // holatlarda ham, pushup/plank kabi yotiq holatlarda ham (qo'l/tirsak yerga tegishi
+    // kerak bo'lganda) to'g'ri ishlaydi — avval faqat tovon asosida hisoblangani uchun
+    // yotiq mashqlarda tana yerga botib yoki uchib qolayotgan edi.
+    rig3d.root.updateMatrixWorld(true);
+    const groundBox = new THREE.Box3().setFromObject(rig3d.root);
+    rig3d.root.position.y += (0 - groundBox.min.y);
+    rig3d.root.updateMatrixWorld(true);
+  }
+
+  function computeExerciseBounds(exId){
+    applyPose3d(exId, 0);
+    const box0 = new THREE.Box3().setFromObject(rig3d.root);
+    applyPose3d(exId, 1);
+    const box1 = new THREE.Box3().setFromObject(rig3d.root);
+    return box0.union(box1);
+  }
+
+  function frameCameraForExercise(exId){
+    const box = computeExerciseBounds(exId);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const radius = Math.max(size.length()/2, 0.4);
+    const fitDist = radius / Math.sin((camera3d.fov*Math.PI/180)/2);
+    const dist = THREE.MathUtils.clamp(fitDist*1.15, 1.3, 7);
+    controls3d.minDistance = Math.max(0.8, dist*0.45);
+    controls3d.maxDistance = dist*2.3;
+    controls3d.target.copy(center);
+    const viewDir = new THREE.Vector3(0, 0.12, 1).normalize();
+    camera3d.position.copy(center).add(viewDir.multiplyScalar(dist));
+    controls3d.update();
+  }
+
+  function ensureThreeScene(){
+    if(renderer3d) return true;
+    const container = document.getElementById('figure3d');
+    if(!container) return false;
+    if(typeof THREE === 'undefined'){
+      container.innerHTML = '<div style="color:#8a9a90; font-size:13px; text-align:center; padding:0 20px;">3D animatsiya yuklanmadi — internet aloqasini tekshiring va sahifani yangilang.</div>';
+      return false;
+    }
+
+    scene3d = new THREE.Scene();
+    camera3d = new THREE.PerspectiveCamera(45, (container.clientWidth||300)/(container.clientHeight||280), 0.1, 100);
+    camera3d.position.set(0, 1.35, 2.7);
+
+    renderer3d = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer3d.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    renderer3d.setSize(container.clientWidth||300, container.clientHeight||280);
+    container.innerHTML = '';
+    container.appendChild(renderer3d.domElement);
+
+    scene3d.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9); dir.position.set(2,4,3); scene3d.add(dir);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.set(-3,1,-2); scene3d.add(fill);
+
+    const platform = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.95,0.95,0.05,32),
+      new THREE.MeshStandardMaterial({color:0x3A3F46, roughness:0.85})
+    );
+    platform.position.y = -0.02;
+    scene3d.add(platform);
+
+    controls3d = new THREE.OrbitControls(camera3d, renderer3d.domElement);
+    controls3d.target.set(0, 1.0, 0);
+    controls3d.enablePan = false;
+    controls3d.enableDamping = true;
+    controls3d.dampingFactor = 0.08;
+    controls3d.minDistance = 1.6;
+    controls3d.maxDistance = 4.5;
+    controls3d.update();
+
+    window.addEventListener('resize', onThreeResize);
+    return true;
+  }
+
+  function onThreeResize(){
+    if(!renderer3d) return;
+    const container = document.getElementById('figure3d');
+    if(!container || container.clientWidth === 0) return;
+    camera3d.aspect = container.clientWidth / container.clientHeight;
+    camera3d.updateProjectionMatrix();
+    renderer3d.setSize(container.clientWidth, container.clientHeight);
+  }
+
+  function figureLoop(){
+    figAnimId = requestAnimationFrame(figureLoop);
+    const dt = Math.min(figClock.getDelta(), 0.05);
+    if(currentPoseId === 'plank'){
+      figBreathT += dt;
+      applyPose3d('plank', 0.5 + Math.sin(figBreathT*1.5)*0.05);
+    } else {
+      figT += figDir * dt * 0.55;
+      if(figT >= 1){ figT = 1; figDir = -1; }
+      if(figT <= 0){ figT = 0; figDir = 1; }
+      applyPose3d(currentPoseId, figT);
+    }
+    controls3d.update();
+    renderer3d.render(scene3d, camera3d);
+  }
+
+  async function startFigureAnimation(exId, retries){
+    retries = retries || 0;
+    const container = document.getElementById('figure3d');
+    // Ekran hali render bo'lmagan bo'lishi mumkin (o'lchami 0) — bir necha marta qayta urinamiz
+    if(container && container.clientWidth === 0 && retries < 10){
+      requestAnimationFrame(()=> startFigureAnimation(exId, retries+1));
+      return;
+    }
+    const ok = ensureThreeScene();
+    if(!ok) return;
+    onThreeResize();
+
+    if(!rig3d){
+      let hint = document.getElementById('fig-loading');
+      if(!hint){
+        hint = document.createElement('div');
+        hint.id = 'fig-loading';
+        hint.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8FAA9F;font-size:12.5px;text-align:center;padding:0 24px;line-height:1.5;';
+        hint.textContent = "3D model yuklanmoqda… (birinchi marta ~20MB, biroz vaqt oladi)";
+        container.appendChild(hint);
+      }
+      const rig = await loadRig3d();
+      const hintEl = document.getElementById('fig-loading');
+      if(hintEl) hintEl.remove();
+      if(!rig || rig.error){
+        const reason = rig && rig.error ? rig.error : "Noma'lum sabab";
+        container.innerHTML = '<div style="color:#8a9a90; font-size:12.5px; text-align:center; padding:0 20px; line-height:1.6;">3D modelni yuklab bo\'lmadi.<br><b style="color:#FF9B4D;">Sabab: ' + reason.replace(/</g,'&lt;') + '</b></div>';
+        return;
+      }
+      rig3d = rig;
+      scene3d.add(rig3d.root);
+    }
+
+    currentPoseId = POSE_DEFS[exId] ? exId : 'squat';
+    frameCameraForExercise(currentPoseId);
+    applyPose3d(currentPoseId, 0);
+    figT = 0; figDir = 1; figBreathT = 0;
+    if(!figAnimId) figureLoop();
+  }
+  function stopFigureAnimation(){
+    if(figAnimId){ cancelAnimationFrame(figAnimId); figAnimId = null; }
+  }
+
+  // ---------- SCREEN 4 LOGIC: camera + motion-based rep counting ----------
+  const video = document.getElementById('video');
+  const camMsg = document.getElementById('cam-msg');
+  const repCountEl = document.getElementById('rep-count');
+  const repTargetEl = document.getElementById('rep-target');
+
+  const skeletonCanvas = document.getElementById('skeleton');
+  const skCtx = skeletonCanvas.getContext('2d');
+  const modelStatusEl = document.getElementById('model-status');
+  let detector = null;
+  let repPhase = 'rest';
+  let extremeAngle = null;
+
+  // --- Kalibrlash / barqarorlashtirish uchun yangi holatlar ---
+  let calibrated = false;          // true bo'lgandagina takrorlar sanaladi
+  let calibrationFrames = 0;       // odam tayyor holatda necha freym turgani
+  let smoothedAngle = null;        // shovqinni kamaytirish uchun silliqlangan burchak
+  let workConfirm = 0;             // "ish" fazasiga o'tishni tasdiqlovchi ketma-ket freymlar
+  let restConfirm = 0;             // "tinch" fazasiga qaytishni tasdiqlovchi ketma-ket freymlar
+  let lastRepTime = 0;             // oxirgi hisoblangan takror vaqti (juda tez takrorni bloklash uchun)
+  let lostVisibilityFrames = 0;    // bo'g'inlar vaqtincha ko'rinmay qolgan freymlar soni (masalan qo'l tana oldidan o'tganda)
+
+  const REQUIRED_CALIB_FRAMES = 15;  // ~1-1.5 soniya barqaror turish kerak
+  const CONFIRM_FRAMES = 4;          // fazani o'zgartirish uchun kerakli ketma-ket freymlar
+  const MIN_REP_INTERVAL = 500;      // ikkita takror orasidagi eng kam vaqt (ms)
+  const SMOOTHING_ALPHA = 0.25;      // burchakni silliqlash koeffitsienti
+  const LOST_VISIBILITY_GRACE = 10;  // shuncha freym davomida bo'g'in vaqtincha yo'qolsa ham hisoblash to'xtatilmaydi
+
+  function resetTrackingState(){
+    calibrated = false;
+    calibrationFrames = 0;
+    smoothedAngle = null;
+    workConfirm = 0;
+    restConfirm = 0;
+    repPhase = 'rest';
+    extremeAngle = null;
+    lostVisibilityFrames = 0;
+  }
+
+  // Kerakli bo'g'inlar yetarlicha ishonch bilan ko'rinyaptimi — aks holda burchakka ishonmaymiz
+  function isBodyVisible(kp, jointType){
+    const TH = 0.5;
+    if(jointType === 'leg'){
+      const leftOk = kp.left_hip && kp.left_knee && kp.left_ankle &&
+        kp.left_hip.score>TH && kp.left_knee.score>TH && kp.left_ankle.score>TH;
+      const rightOk = kp.right_hip && kp.right_knee && kp.right_ankle &&
+        kp.right_hip.score>TH && kp.right_knee.score>TH && kp.right_ankle.score>TH;
+      return leftOk || rightOk;
+    } else {
+      const leftOk = kp.left_shoulder && kp.left_elbow && kp.left_wrist &&
+        kp.left_shoulder.score>TH && kp.left_elbow.score>TH && kp.left_wrist.score>TH;
+      const rightOk = kp.right_shoulder && kp.right_elbow && kp.right_wrist &&
+        kp.right_shoulder.score>TH && kp.right_elbow.score>TH && kp.right_wrist.score>TH;
+      return leftOk || rightOk;
+    }
+  }
+
+  // Odam boshlang'ich (tik/tinch) holatga yaqinmi — kalibrlash shundan boshlanadi
+  function isNearRestPosture(angle, cfg){
+    if(cfg.direction === 'decreasing') return angle > cfg.workAngle;
+    return angle < cfg.workAngle;
+  }
+
+  // Skelet chiziqlari: qaysi nuqtalar bir-biriga ulanadi
+  const SKELETON_EDGES = [
+    ['left_shoulder','right_shoulder'],
+    ['left_shoulder','left_elbow'],['left_elbow','left_wrist'],
+    ['right_shoulder','right_elbow'],['right_elbow','right_wrist'],
+    ['left_shoulder','left_hip'],['right_shoulder','right_hip'],
+    ['left_hip','right_hip'],
+    ['left_hip','left_knee'],['left_knee','left_ankle'],
+    ['right_hip','right_knee'],['right_knee','right_ankle']
+  ];
+
+  async function ensureDetector(){
+    if(detector) return detector;
+    modelStatusEl.textContent = 'AI tana kuzatish modeli yuklanmoqda…';
+    await tf.setBackend('webgl');
+    await tf.ready();
+    detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
+      modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+    });
+    modelStatusEl.textContent = 'Model tayyor — harakatni boshlang.';
+    setTimeout(()=>{ modelStatusEl.style.display='none'; }, 2000);
+    return detector;
+  }
+
+  document.getElementById('btn-start-cam').addEventListener('click', async ()=>{
+    stopFigureAnimation();
+    document.getElementById('cam-title').textContent = EXO[currentExId].name;
+    repCount = 0;
+    resetTrackingState();
+    repCountEl.textContent = '0';
+    repTargetEl.textContent = '/ ' + targetReps + ' TA';
+    modelStatusEl.style.display = 'block';
+    show('camera');
+    camMsg.textContent = 'Kamera yoqilmoqda…';
+    camMsg.className = 'overlay-msg';
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
+      video.srcObject = stream;
+      video.onloadedmetadata = async ()=>{
+        skeletonCanvas.width = video.videoWidth;
+        skeletonCanvas.height = video.videoHeight;
+        camMsg.textContent = 'AI modelni yuklamoqda…';
+        try{
+          await ensureDetector();
+          camMsg.textContent = EXO[currentExId].rep ? 'Boshlang\'ich holatda, harakatsiz turing — tekshirilmoqda…' : 'Statik mashq — holatni ushlab turing (takror sanalmaydi)';
+          startPoseTracking();
+        }catch(modelErr){
+          camMsg.textContent = 'AI modelini yuklab bo\'lmadi. Internetga ulanishni tekshiring.';
+          camMsg.className = 'overlay-msg warn';
+        }
+      };
+    }catch(err){
+      camMsg.textContent = 'Kameraga ruxsat berilmadi. Brauzer sozlamalaridan ruxsat bering.';
+      camMsg.className = 'overlay-msg warn';
+    }
+  });
+
+  function stopCamera(){
+    if(rafId) cancelAnimationFrame(rafId);
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    skCtx.clearRect(0,0,skeletonCanvas.width, skeletonCanvas.height);
+    resetTrackingState();
+  }
+  document.getElementById('btn-stop-cam').addEventListener('click', ()=>{
+    stopCamera();
+    show('exercise');
+    startFigureAnimation(currentExId);
+  });
+  document.getElementById('btn-back-ex').addEventListener('click', ()=>{
+    stopCamera();
+    show('exercise');
+    startFigureAnimation(currentExId);
+  });
+  document.getElementById('btn-next-set').addEventListener('click', ()=>{
+    repCount = 0;
+    resetTrackingState();
+    repCountEl.textContent = '0';
+    camMsg.textContent = 'Yangi to\'plam boshlandi — boshlang\'ich holatda turing';
+    camMsg.className = 'overlay-msg';
+  });
+
+  // Uch nuqta orasidagi burchakni (gradusda) hisoblaydi — B nuqtadagi burchak
+  function angleAt(a, b, c){
+    const ab = {x:a.x-b.x, y:a.y-b.y};
+    const cb = {x:c.x-b.x, y:c.y-b.y};
+    const dot = ab.x*cb.x + ab.y*cb.y;
+    const magAB = Math.hypot(ab.x, ab.y);
+    const magCB = Math.hypot(cb.x, cb.y);
+    if(magAB===0 || magCB===0) return null;
+    const cos = Math.max(-1, Math.min(1, dot/(magAB*magCB)));
+    return Math.acos(cos) * 180/Math.PI;
+  }
+
+  function getKeypointMap(pose){
+    const m = {};
+    pose.keypoints.forEach(k=>{ m[k.name] = k; });
+    return m;
+  }
+
+  // Squat/lunge kabi mashqlar uchun son-tizza-oyoq panjasi burchagi (ikkala oyoqdan ishonchliroqi olinadi)
+  function computeJointAngle(kp, jointType, direction){
+    if(jointType === 'leg'){
+      const sides = [];
+      if(kp.left_hip && kp.left_knee && kp.left_ankle){
+        const score = (kp.left_hip.score+kp.left_knee.score+kp.left_ankle.score)/3;
+        const a = angleAt(kp.left_hip, kp.left_knee, kp.left_ankle);
+        if(a!==null) sides.push({angle:a, score});
+      }
+      if(kp.right_hip && kp.right_knee && kp.right_ankle){
+        const score = (kp.right_hip.score+kp.right_knee.score+kp.right_ankle.score)/3;
+        const a = angleAt(kp.right_hip, kp.right_knee, kp.right_ankle);
+        if(a!==null) sides.push({angle:a, score});
+      }
+      return pickBestAngle(sides, direction);
+    } else { // 'arm'
+      const sides = [];
+      if(kp.left_shoulder && kp.left_elbow && kp.left_wrist){
+        const score = (kp.left_shoulder.score+kp.left_elbow.score+kp.left_wrist.score)/3;
+        const a = angleAt(kp.left_shoulder, kp.left_elbow, kp.left_wrist);
+        if(a!==null) sides.push({angle:a, score});
+      }
+      if(kp.right_shoulder && kp.right_elbow && kp.right_wrist){
+        const score = (kp.right_shoulder.score+kp.right_elbow.score+kp.right_wrist.score)/3;
+        const a = angleAt(kp.right_shoulder, kp.right_elbow, kp.right_wrist);
+        if(a!==null) sides.push({angle:a, score});
+      }
+      return pickBestAngle(sides, direction);
+    }
+  }
+  // Ikkala tomon ham ko'rinsa, ULARNI O'RTACHASINI OLMAYMIZ — chunki bitta qo'l/oyoq bilan
+  // bajariladigan mashqlarda (masalan navbat bilan row) statik tomon harakatlanayotgan tomonning
+  // burchak o'zgarishini "yuvib" yuborib, takrorni sanamay qo'yardi. Buning o'rniga "ishlayotgan"
+  // (tinch holatdan eng uzoqlashgan) tomonning burchagi tanlanadi.
+  function pickBestAngle(sides, direction){
+    const good = sides.filter(s=>s.score > 0.5);
+    if(good.length === 0) return null;
+    if(good.length === 1) return good[0].angle;
+    return direction === 'decreasing'
+      ? Math.min(good[0].angle, good[1].angle)
+      : Math.max(good[0].angle, good[1].angle);
+  }
+
+  function processRep(angle, cfg){
+    if(angle === null) return;
+    const now = performance.now();
+
+    if(cfg.direction === 'decreasing'){
+      if(repPhase==='rest'){
+        if(angle < cfg.workAngle){
+          workConfirm++;
+          if(workConfirm >= CONFIRM_FRAMES){
+            workConfirm = 0;
+            repPhase='work'; extremeAngle=angle;
+            camMsg.textContent='Pastga tushdingiz — endi yuqoriga qayting'; camMsg.className='overlay-msg';
+          }
+        } else {
+          workConfirm = 0; // shovqin/vaqtinchalik harakat — hisobga olinmaydi
+        }
+      } else if(repPhase==='work'){
+        extremeAngle = Math.min(extremeAngle, angle);
+        if(angle > cfg.restAngle){
+          restConfirm++;
+          if(restConfirm >= CONFIRM_FRAMES){
+            restConfirm = 0;
+            if(now - lastRepTime > MIN_REP_INTERVAL){
+              finishRep(extremeAngle <= cfg.depthAngle);
+              lastRepTime = now;
+            } else {
+              // juda tez qaytish — real takror emas, faqat holatni tozalaymiz
+              repPhase='rest'; extremeAngle=null;
+            }
+          }
+        } else {
+          restConfirm = 0;
+        }
+      }
+    } else { // increasing
+      if(repPhase==='rest'){
+        if(angle > cfg.workAngle){
+          workConfirm++;
+          if(workConfirm >= CONFIRM_FRAMES){
+            workConfirm = 0;
+            repPhase='work'; extremeAngle=angle;
+            camMsg.textContent='Davom eting…'; camMsg.className='overlay-msg';
+          }
+        } else {
+          workConfirm = 0;
+        }
+      } else if(repPhase==='work'){
+        extremeAngle = Math.max(extremeAngle, angle);
+        if(angle < cfg.restAngle){
+          restConfirm++;
+          if(restConfirm >= CONFIRM_FRAMES){
+            restConfirm = 0;
+            if(now - lastRepTime > MIN_REP_INTERVAL){
+              finishRep(extremeAngle >= cfg.depthAngle);
+              lastRepTime = now;
+            } else {
+              repPhase='rest'; extremeAngle=null;
+            }
+          }
+        } else {
+          restConfirm = 0;
+        }
+      }
+    }
+  }
+  function finishRep(fullRange){
+    repPhase='rest'; extremeAngle=null;
+    if(fullRange){
+      repCount++;
+      repCountEl.textContent = repCount;
+      camMsg.textContent = repCount + '-takror hisoblandi ✓';
+      camMsg.className = 'overlay-msg good';
+      addBurnedCalories(0.5); // har bir to'g'ri bajarilgan takror uchun taxminiy kaloriya sarfi
+      if(repCount >= targetReps){
+        camMsg.textContent = 'To\'plam tugadi! 💪 "Keyingi to\'plam" tugmasini bosing';
+      }
+    } else {
+      camMsg.textContent = 'To\'liq bajarilmadi — harakat oralig\'ini kattaroq qiling';
+      camMsg.className = 'overlay-msg warn';
+    }
+  }
+
+  function drawSkeleton(kp){
+    skCtx.clearRect(0,0,skeletonCanvas.width, skeletonCanvas.height);
+    skCtx.lineWidth = 4;
+    skCtx.strokeStyle = '#C6FF4D';
+    skCtx.fillStyle = '#C6FF4D';
+
+    // Tanadagi chiziqlar (skelet)
+    SKELETON_EDGES.forEach(([a,b])=>{
+      const p1 = kp[a], p2 = kp[b];
+      if(p1 && p2 && p1.score>0.3 && p2.score>0.3){
+        skCtx.beginPath();
+        skCtx.moveTo(p1.x, p1.y);
+        skCtx.lineTo(p2.x, p2.y);
+        skCtx.stroke();
+      }
+    });
+    // Bo'yin chizig'i: burun bilan yelkalar o'rtasi
+    if(kp.nose && kp.left_shoulder && kp.right_shoulder && kp.nose.score>0.3){
+      const midX = (kp.left_shoulder.x + kp.right_shoulder.x)/2;
+      const midY = (kp.left_shoulder.y + kp.right_shoulder.y)/2;
+      skCtx.beginPath();
+      skCtx.moveTo(kp.nose.x, kp.nose.y);
+      skCtx.lineTo(midX, midY);
+      skCtx.stroke();
+    }
+    // Bo'g'inlardagi nuqtalar (bosh, tirsak, tizza va h.k.)
+    Object.values(kp).forEach(p=>{
+      if(p.score > 0.3){
+        skCtx.beginPath();
+        skCtx.arc(p.x, p.y, p.name==='nose'?7:5, 0, 2*Math.PI);
+        skCtx.fill();
+      }
+    });
+  }
+
+  // Bo'g'inlar aniq ko'rinmayotganda foydalanuvchiga nima qilish kerakligini aniqroq aytamiz
+  // (masofa, kadr chetiga yaqinlik, bir tomon bo'g'inlarining yo'qligi kabi sabablarga qarab)
+  function buildVisibilityHint(kp, jointType, vw, vh){
+    const REL = jointType === 'leg'
+      ? ['left_hip','right_hip','left_knee','right_knee','left_ankle','right_ankle']
+      : ['left_shoulder','right_shoulder','left_elbow','right_elbow','left_wrist','right_wrist'];
+    const pts = REL.map(name=>kp[name]).filter(p=>p && p.score>0.15);
+    if(pts.length < 2){
+      return "Kamera tomon qarab, butun tanangiz ko'rinishiga ishonch hosil qiling";
+    }
+    const minX = Math.min(...pts.map(p=>p.x));
+    const maxX = Math.max(...pts.map(p=>p.x));
+    const minY = Math.min(...pts.map(p=>p.y));
+    const maxY = Math.max(...pts.map(p=>p.y));
+    const bboxH = maxY - minY;
+
+    if(bboxH < vh*0.28){
+      return "Kameraga biroz yaqinroq keling";
+    }
+    if(minY < vh*0.03 || maxY > vh*0.97){
+      return "Biroz orqaga chekining — butun tanangiz kadrga sig'sin";
+    }
+    // Ekran ko'zgu effektida ko'rsatilgani uchun (CSS bilan aks ettirilgan), foydalanuvchi ekranda
+    // o'zini qayerda ko'rsa, aynan o'sha tomonga (o'z chap/o'ng tomoniga) surilishi kerak.
+    const rawCenterX = (minX + maxX) / 2;
+    const screenX = vw - rawCenterX;
+    if(screenX < vw*0.38) return "Biroz o'ngga suring";
+    if(screenX > vw*0.62) return "Biroz chapga suring";
+
+    const leftNames = REL.filter(n=>n.startsWith('left_'));
+    const rightNames = REL.filter(n=>n.startsWith('right_'));
+    const leftScore = leftNames.reduce((s,n)=> s+(kp[n]?kp[n].score:0), 0) / leftNames.length;
+    const rightScore = rightNames.reduce((s,n)=> s+(kp[n]?kp[n].score:0), 0) / rightNames.length;
+    if(Math.abs(leftScore - rightScore) > 0.3){
+      return "Tanangizni biroz kamera tomon buring — ikkala tomon ham aniq ko'rinsin";
+    }
+    return "Yorug'roq joyga o'tib ko'ring yoki kamerani biroz uzoqroqqa qo'ying";
+  }
+
+  function startPoseTracking(){
+    async function tick(){
+      if(!stream){ return; }
+      if(video.videoWidth > 0 && detector){
+        const poses = await detector.estimatePoses(video);
+        if(poses && poses.length > 0 && poses[0].score > 0.3){
+          const kp = getKeypointMap(poses[0]);
+          drawSkeleton(kp);
+          const cfg = EXO[currentExId].rep;
+
+          if(cfg){
+            const visible = isBodyVisible(kp, cfg.joint);
+            const rawAngle = visible ? computeJointAngle(kp, cfg.joint, cfg.direction) : null;
+
+            if(!visible || rawAngle === null){
+              lostVisibilityFrames++;
+              const hint = buildVisibilityHint(kp, cfg.joint, video.videoWidth, video.videoHeight);
+              if(!calibrated || lostVisibilityFrames > LOST_VISIBILITY_GRACE){
+                // Hali kalibrlanmagan, yoki uzoq vaqtdan beri bo'g'inlar ko'rinmayapti — qaytadan boshlaymiz
+                resetTrackingState();
+                camMsg.textContent = hint;
+                camMsg.className = 'overlay-msg warn';
+              } else {
+                // Qisqa vaqtlik to'siq (masalan qo'l tana oldidan o'tdi) — hisobni yo'qotmaymiz,
+                // oxirgi bilingan holatni saqlab, davom etamiz
+                camMsg.textContent = hint;
+                camMsg.className = 'overlay-msg';
+              }
+            } else {
+              lostVisibilityFrames = 0;
+              smoothedAngle = (smoothedAngle === null)
+                ? rawAngle
+                : smoothedAngle * (1 - SMOOTHING_ALPHA) + rawAngle * SMOOTHING_ALPHA;
+
+              if(!calibrated){
+                if(isNearRestPosture(smoothedAngle, cfg)){
+                  calibrationFrames++;
+                  const left = REQUIRED_CALIB_FRAMES - calibrationFrames;
+                  camMsg.textContent = left > 0
+                    ? `Tayyorlaning: boshlang'ich holatda turing… (${calibrationFrames}/${REQUIRED_CALIB_FRAMES})`
+                    : 'Tayyor! Harakatni boshlang.';
+                  camMsg.className = 'overlay-msg';
+                  if(calibrationFrames >= REQUIRED_CALIB_FRAMES){
+                    calibrated = true;
+                    repPhase = 'rest';
+                    workConfirm = 0; restConfirm = 0; extremeAngle = null;
+                  }
+                } else {
+                  // Harakat qilyapti yoki hali joyiga kelmagan — kalibrlashni qaytadan boshlaymiz
+                  calibrationFrames = 0;
+                  camMsg.textContent = 'Boshlang\'ich (tik/tinch) holatga qayting va harakatsiz turing';
+                  camMsg.className = 'overlay-msg warn';
+                }
+              } else {
+                processRep(smoothedAngle, cfg);
+              }
+            }
+          }
+        } else {
+          // Odam umuman aniqlanmadi
+          resetTrackingState();
+          camMsg.textContent = 'Odam aniqlanmadi — kameraga to\'liq ko\'rining';
+          camMsg.className = 'overlay-msg warn';
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+})();
+</script>
+</body>
+</html>
